@@ -1,6 +1,6 @@
 ---
 name: git-init
-description: Initialisiert ein lokales Git-Repo für ein Projekt. Legt .gitignore und schlankes CLAUDE.md an, macht initialen Commit. Aufruf via /git-init <Projektpfad>.
+description: Initialisiert ein neues Projekt im Lightweight UAOS-Modus (erstellt .gitignore, PROJECT.md und task.md). Fragt nach abweichenden Regeln. Aufruf via /git-init <Projektpfad>.
 ---
 
 Initialisiere ein lokales Git-Repository. Pfad: $ARGUMENTS
@@ -13,9 +13,16 @@ Halte dich strikt an diese Reihenfolge:
 2. Prüfe ob im Zielverzeichnis bereits ein `.git`-Verzeichnis existiert. Falls ja: STOPPEN und melden — kein doppeltes Init.
 3. `git init` im Zielverzeichnis ausführen.
 4. `.gitignore` anlegen (Inhalt siehe unten).
-5. Projektspezifisches `CLAUDE.md` anlegen (Inhalt siehe unten). Frage vorher: Was ist der Tech-Stack und das Ziel des Projekts?
-6. `git add -A` und `git commit -m "init: Projektstruktur"`.
-7. Status melden: Pfad, Branch, Anzahl committeter Dateien.
+5. **Lightweight-Setup durchführen (Standard):**
+   - Kopiere die Vorlagen `PROJECT.md` und `task.md` aus `C:\Users\sts\AOS\templates\` in das Projektverzeichnis.
+   - Frage den Benutzer vorab nach: Projektname, Ziel des Projekts, Tech-Stack und Testbefehlen.
+   - Befülle die kopierte `PROJECT.md` mit diesen Angaben.
+   - Initialisiere den Statusblock in `task.md` (Zuletzt bearbeitet: Heute, Nächster Schritt: Erste Implementierung planen).
+6. **Tool-Configs nur bei Bedarf (Abweichungsprüfung):**
+   - Frage den Benutzer, ob für dieses Projekt projektspezifische Abweichungen von den globalen Regeln nötig sind.
+   - Nur wenn der Benutzer dies bejaht, erstelle eine lokale `CLAUDE.md` (für Claude Code) bzw. `DEVELOPMENT.md` (für Antigravity) mit den entsprechenden abweichenden Anweisungen (Inhalt siehe unten). Andernfalls lasse diese Dateien weg (beide Clients laden standardmäßig die globalen Regeln aus `C:\Users\sts\AOS\memory\global-rules.md`).
+7. `git add -A` und `git commit -m "init: Lightweight UAOS Projektstruktur"` ausführen.
+8. Status melden: Pfad, Branch, Anzahl committeter Dateien und bestätigen, dass das Projekt im Lightweight-Modus aufgesetzt wurde.
 
 Noch kein Remote anlegen — das erfolgt separat bei Launch.
 
@@ -65,19 +72,13 @@ __pycache__/
 
 ---
 
-Inhalt des projektspezifischen `CLAUDE.md`:
-(Platzhalter mit tatsächlichen Angaben aus Schritt 5 füllen)
+Inhalt der lokalen `CLAUDE.md` oder `DEVELOPMENT.md` (NUR bei projektspezifischen Abweichungen):
 
 ```markdown
-# [Projektname]
+# Projektspezifische Abweichungen / Sonderregeln
 
-## Ziel
-[Ein Satz: Was macht dieses Projekt?]
+@C:\Users\sts\AOS\memory\global-rules.md
 
-## Tech-Stack
-- [z.B. HTML/CSS/JS vanilla | React | Next.js | Python/Flask | ...]
-
-## Projektspezifische Regeln
-- [Nur was vom übergeordneten CLAUDE.md in C:\Users\sts\Projekte\ abweicht]
-- [Leer lassen wenn keine Abweichungen]
+## Abweichende Regeln
+- [Hier nur Regeln eintragen, die von den globalen Regeln abweichen. Falls keine Abweichungen nötig sind, diese Datei nicht erstellen!]
 ```
