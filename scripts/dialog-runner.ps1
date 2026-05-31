@@ -109,8 +109,12 @@ while ($true) {
         
         $prompt = "Thema: $Topic. Lies den Dialog und antworte."
         
-        # Startet Claude Code im Headless-Modus
-        npx --yes @anthropic-ai/claude-code -p $prompt --permission-mode bypassPermissions
+        # Startet Claude Code im Headless-Modus (bevorzugt globale Installation wegen Credentials)
+        if (Get-Command "claude" -ErrorAction SilentlyContinue) {
+            claude -p $prompt --permission-mode bypassPermissions
+        } else {
+            npx --yes @anthropic-ai/claude-code -p $prompt --permission-mode bypassPermissions
+        }
         
         # Letzten Eintrag aus from-claude.md auslesen und anzeigen
         if (Test-Path $fromClaudeFile) {
