@@ -49,20 +49,7 @@ C:\Users\sts\AOS\                   ← Dieses Verzeichnis (UAOS Master)
 
 ## 2. Einrichtung der symbolischen Links (Symlinks) unter Windows
 
-Um die ausführbaren Komponenten für **Claude Code** bereitzustellen, müssen symbolische Links (Symlinks) angelegt werden. Stellen Sie sicher, dass in den Windows-Systemeinstellungen der **Entwicklermodus** aktiv ist (keine Administratorrechte erforderlich).
-
-Führen Sie folgende Befehle in der PowerShell aus:
-
-```powershell
-# Commands verknüpfen
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\sync.md" -Value "C:\Users\sts\AOS\commands\sync.md" -Force
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\git-init.md" -Value "C:\Users\sts\AOS\commands\git-init.md" -Force
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\entscheidungsvorlage.md" -Value "C:\Users\sts\AOS\commands\entscheidungsvorlage.md" -Force
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\zew-praesentation.md" -Value "C:\Users\sts\AOS\commands\zew-praesentation.md" -Force
-
-# Hooks verknüpfen
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\hooks\block-dangerous.sh" -Value "C:\Users\sts\AOS\hooks\block-dangerous.sh" -Force
-```
+Um die ausführbaren Komponenten für **Claude Code** bereitzustellen, müssen symbolische Links (Symlinks) angelegt werden. Die genaue Anleitung und die PowerShell-Befehle hierzu finden Sie in der [SETUP.md](SETUP.md).
 
 ---
 
@@ -124,55 +111,17 @@ C:\Users\sts\AOS\scripts\add-skill.ps1 -CommandName "name-des-neuen-skills"
 
 ## 7. Agent-zu-Agent-Kommunikation (`dialog\`)
 
-Claude Code und Antigravity können über den `dialog\`-Ordner asynchron miteinander kommunizieren — ohne dass der User als Bote fungiert.
+Claude Code und Antigravity können über den `dialog\`-Ordner asynchron und vollautomatisch miteinander kommunizieren. 
 
-### Protokoll
-
-Jedes Thema bekommt einen Unterordner. Die Agents schreiben abwechselnd:
-
-```
-dialog/<thema>/
-├── status.md        ← "waiting-for-claude" | "waiting-for-ag" | "done" + Rundenzähler
-├── from-claude.md   ← Claude Code schreibt hier (append mit Zeitstempel-Header)
-└── from-ag.md       ← Antigravity schreibt hier (append mit Zeitstempel-Header)
-```
-
-**Übergaberegeln:** Nur schreiben wenn `status` den eigenen Turn anzeigt. Nach dem Schreiben `status` auf den anderen Agent umschalten und `current_round` erhöhen. Bei `current_round > max_rounds` → `status: done`.
-
-### Interaktive Chat-Orchestrierung (Hands-off)
-
-Um einen vollautomatischen Dialog ohne Wechsel der Fenster zu starten, geben Sie Antigravity direkt in dieser Chat-Session das Startkommando (z. B. *"Führe einen Dialog mit Claude zum Thema 'X' über 'Y' für 3 Runden."*).
-
-#### Ablauf:
-1. **Initialisierung:** Antigravity erstellt den Themen-Ordner unter `dialog/` und schreibt die Startfrage in `from-ag.md`.
-2. **Direkte Ausführung (Loop):** 
-   * Antigravity führt Claude Code im Hintergrund aus (`claude -p "..." --permission-mode bypassPermissions`).
-   * Antigravity liest Claudes Antwort aus `from-claude.md` ein.
-   * Antigravity formuliert die nächste Antwort, schreibt sie in `from-ag.md` und startet sofort die nächste Runde.
-3. **Ergebnis:** Der gesamte Lauf erfolgt verzögerungsfrei (ca. 60–90 Sekunden für 3 Runden). Am Ende wird Ihnen der komplette Diskussionsverlauf und die Zusammenfassung gesammelt hier im Chat präsentiert.
-
-> [!NOTE]
-> Das Skript `dialog-runner.ps1` ist veraltet (deprecated) und wurde im Ordner `scripts/archive/` abgelegt.
-
-### Von Claude initiierte Dialoge (`__cc_trigger__`)
-Claude Code kann selbstständig eine Diskussion vorschlagen. Er legt dazu einen Dialogordner an und platziert darin eine leere Datei namens `__cc_trigger__`.
-
-Wenn Sie Antigravity bitten, nach offenen Trigger-Dateien zu suchen (z. B. *"Prüfe, ob Claude offene Dialoge hat"*), übernimmt Antigravity automatisch die Orchestrierung der Schleife und antwortet auf Claudes Eröffnungsbeitrag.
+### Ablauf (Chat-Orchestrierung):
+* **Start:** Starten Sie den Dialog einfach per Textbefehl in Antigravitys Chat (z. B. *"Starte Dialog zum Thema 'X'..."*).
+* **Ausführung:** Der Dialog läuft 100% im Hintergrund und verzögerungsfrei durch.
+* **Ergebnis:** Nach Abschluss aller Runden wird der komplette Verlauf und das Ergebnis gesammelt im Chat ausgegeben.
+* **Protokoll & Details:** Die genauen Details zum Status-Protokoll und den von Claude initiierten Dialogen (`__cc_trigger__`) finden Sie in der [dialog/README.md](dialog/README.md).
 
 ---
 
 
-## 8. Versionskontrolle & Schutz vor Fehlkonfiguration (Git)
+## 8. Versionskontrolle (Git)
 
-Das gesamte UAOS-Masterverzeichnis (`C:\Users\sts\AOS\`) wird per Git versioniert.
-
-### Warum das notwendig ist:
-* **Sicherheit:** Da KIs selbstständig Konfigurationen optimieren oder anpassen können, schützt Git vor fehlerhaften Änderungen oder "Verschlimmbesserungen" der globalen Regeln und Skripte.
-* **Historie:** Sie können jederzeit nachvollziehen, welcher Agent zu welchem Zeitpunkt eine Regel angepasst hat (`git log`).
-* **Sicherung:** Über ein privates Remote-Repository können Sie das UAOS auf andere Rechner übertragen.
-
-### Wichtige Git-Befehle im UAOS:
-* **Status prüfen:** `git status`
-* **Änderungen vergleichen:** `git diff`
-* **Änderungen zurücksetzen:** `git checkout -- <dateipfad>`
-* **Änderungen committen:** `git add -A; git commit -m "update: [Beschreibung]"`
+Das gesamte UAOS-Masterverzeichnis (`C:\Users\sts\AOS\`) wird per Git versioniert. Dies schützt vor unabsichtlichen Fehlkonfigurationen durch KIs und bietet eine lückenlose Historie aller Regel-, Befehls- und Skriptanpassungen.
