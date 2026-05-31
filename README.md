@@ -139,35 +139,25 @@ dialog/<thema>/
 
 **Übergaberegeln:** Nur schreiben wenn `status` den eigenen Turn anzeigt. Nach dem Schreiben `status` auf den anderen Agent umschalten und `current_round` erhöhen. Bei `current_round > max_rounds` → `status: done`.
 
-### Live-Orchestrierung (dialog-runner.ps1)
+### Interaktive Chat-Orchestrierung (Hands-off)
 
-Um einen vollautomatischen Dialog zu starten, bei dem die Antworten live im Terminal ausgegeben werden, nutzen Sie das Orchestrierungsskript:
+Um einen vollautomatischen Dialog ohne Wechsel der Fenster zu starten, geben Sie Antigravity direkt in dieser Chat-Session das Startkommando (z. B. *"Führe einen Dialog mit Claude zum Thema 'X' über 'Y' für 3 Runden."*).
 
-```powershell
-# Einen neuen Dialog starten (AG schreibt die Startfrage und übergibt an Claude)
-C:\Users\sts\AOS\scripts\dialog-runner.ps1 -Topic "tech-stack" -MaxRounds 5 -InitialPrompt "Lass uns über Next.js vs. Vanilla HTML diskutieren."
+#### Ablauf:
+1. **Initialisierung:** Antigravity erstellt den Themen-Ordner unter `dialog/` und schreibt die Startfrage in `from-ag.md`.
+2. **Direkte Ausführung (Loop):** 
+   * Antigravity führt Claude Code im Hintergrund aus (`claude -p "..." --permission-mode bypassPermissions`).
+   * Antigravity liest Claudes Antwort aus `from-claude.md` ein.
+   * Antigravity formuliert die nächste Antwort, schreibt sie in `from-ag.md` und startet sofort die nächste Runde.
+3. **Ergebnis:** Der gesamte Lauf erfolgt verzögerungsfrei (ca. 60–90 Sekunden für 3 Runden). Am Ende wird Ihnen der komplette Diskussionsverlauf und die Zusammenfassung gesammelt hier im Chat präsentiert.
 
-# Einen bestehenden Dialog fortsetzen
-C:\Users\sts\AOS\scripts\dialog-runner.ps1 -Topic "tech-stack"
-```
-
-#### Funktionsweise des Runners:
-1. **Initialisierung:** Erstellt den Ordner und schreibt die Startfrage von Antigravity in `from-ag.md`.
-2. **Ping-Pong-Schleife:**
-   * Führt im Hintergrund headless Claude Code aus (`npx @anthropic-ai/claude-code -p ... --permission-mode bypassPermissions`).
-   * Liest Claudes Antwort ein und gibt sie live auf der Kommandozeile aus.
-   * Wartet darauf, dass Antigravity an der Reihe ist, und pausiert, bis die Antwort in Antigravitys Chat generiert wurde.
-3. **Durchführung:** Wenn Sie in Antigravity den Befehl `dialog-reply` ausführen (oder über das Chatfenster antworten), erkennt der Runner die Änderung und startet automatisch die nächste Runde mit Claude Code.
+> [!NOTE]
+> Das Skript `dialog-runner.ps1` ist veraltet (deprecated) und wurde im Ordner `scripts/archive/` abgelegt.
 
 ### Von Claude initiierte Dialoge (`__cc_trigger__`)
-Claude Code kann eigenständig eine Diskussion vorschlagen. Er legt dazu einen Dialogordner an und platziert darin eine leere Datei namens `__cc_trigger__`.
+Claude Code kann selbstständig eine Diskussion vorschlagen. Er legt dazu einen Dialogordner an und platziert darin eine leere Datei namens `__cc_trigger__`.
 
-Wenn Sie `dialog-runner.ps1` ohne Parameter starten, scannt das Skript nach solchen Trigger-Dateien und bietet Ihnen an, den Dialog direkt zu übernehmen:
-
-```powershell
-C:\Users\sts\AOS\scripts\dialog-runner.ps1
-# Zeigt eine Liste gefundener Claude-Triggerthemen zur Auswahl an.
-```
+Wenn Sie Antigravity bitten, nach offenen Trigger-Dateien zu suchen (z. B. *"Prüfe, ob Claude offene Dialoge hat"*), übernimmt Antigravity automatisch die Orchestrierung der Schleife und antwortet auf Claudes Eröffnungsbeitrag.
 
 ---
 

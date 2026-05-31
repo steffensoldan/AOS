@@ -40,23 +40,22 @@ Nachrichten werden **angehängt** (append), nie überschrieben.
 
 ---
 
-## Live-Orchestrierung mit dialog-runner.ps1
+## Interaktive Chat-Orchestrierung (Hands-off)
 
-Die Orchestrierung erfolgt über ein zentrales PowerShell-Skript, das die Schleife steuert und Claude Code über die CLI aufruft:
-
-```powershell
-# Dialog starten (AG initialisiert und schreibt ersten Beitrag)
-C:\Users\sts\AOS\scripts\dialog-runner.ps1 -Topic "thema-name" -MaxRounds 5 -InitialPrompt "Deine Startfrage..."
-```
+Die Steuerung des Dialogs wird direkt von Antigravity aus der aktiven Chat-Session heraus durchgeführt. Es ist kein separates Terminal-Fenster und kein Runner-Skript nötig:
 
 ### Ablaufsteuerung
 
-1. **Antigravity startet:** Schreibt den ersten Beitrag in `from-ag.md` und setzt `status: waiting-for-claude`.
-2. **Claude Code antwortet:** Das Skript ruft Claude im Headless-Modus auf:
-   `npx @anthropic-ai/claude-code -p "..." --permission-mode bypassPermissions`
+1. **Start:** Der Benutzer gibt Antigravity das Startkommando (z.B. *"Starte einen Dialog mit Claude zum Thema 'X' über 'Y' für 3 Runden."*).
+2. **Antigravity startet:** Schreibt den ersten Beitrag in `from-ag.md` und setzt `status: waiting-for-claude`.
+3. **Claude Code antwortet:** Antigravity startet Claude im Headless-Modus im Hintergrund:
+   `claude -p "..." --permission-mode bypassPermissions`
    Claude führt das Skill `dialog-reply` aus, schreibt seine Antwort in `from-claude.md` und setzt `status: waiting-for-ag`.
-3. **Antigravity antwortet:** Das Skript wartet im Terminal, bis die status.md-Datei aktualisiert wird. Der Benutzer antwortet direkt im Antigravity-Chatfenster über die dort verknüpfte Skill-Datei `dialog-reply`.
-4. **Schleifenende:** Sobald die Rundenanzahl `max_rounds` überschritten wird oder einer der Agenten `status: done` setzt, beendet sich das Skript.
+4. **Antigravity antwortet:** Antigravity liest Claudes Antwort ein, formuliert den eigenen Beitrag, hängt ihn an `from-ag.md` an, setzt den Status wieder auf `waiting-for-claude` und startet sofort die nächste Runde.
+5. **Ergebnis:** Sobald `max_rounds` erreicht ist, wird `status: done` gesetzt und Antigravity gibt den gesamten Verlauf gesammelt im Chat aus.
+
+> [!NOTE]
+> Das alte PowerShell-Skript `dialog-runner.ps1` wurde in das Verzeichnis `scripts/archive/` verschoben.
 
 ---
 
@@ -67,7 +66,7 @@ Claude Code kann eigenständig ein Thema vorschlagen:
 2. Schreibt den Status `status: waiting-for-ag`.
 3. Legt eine leere Datei namens `__cc_trigger__` an.
 
-Das Skript `dialog-runner.ps1` scannt beim Start ohne Parameter nach dieser Datei und bietet dem Benutzer an, den Dialog zu übernehmen.
+Sobald der Benutzer Antigravity bittet, nach offenen Dialogen zu suchen, liest Antigravity das Thema ein, löscht die Trigger-Datei, schreibt seine Antwort in `from-ag.md` und startet die automatische Hintergrundschleife.
 
 ---
 
