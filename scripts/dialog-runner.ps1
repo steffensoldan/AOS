@@ -59,7 +59,7 @@ if (-not (Test-Path $topicDir)) {
     
     # Start-Antrag für Antigravity schreiben
     $dateStr = Get-Date -Format "yyyy-MM-dd HH:mm"
-    $agStart = "# Antigravity Antworten`n`n**[$dateStr, Antigravity — Runde 1]**`n`n$InitialPrompt`n`n— Antigravity`n"
+    $agStart = "# Antigravity Antworten`n`n**[$dateStr, Antigravity - Runde 1]**`n`n$InitialPrompt`n`n- Antigravity`n"
     $agStart | Out-File $fromAgFile -Encoding utf8
     
     # Status-Datei schreiben
