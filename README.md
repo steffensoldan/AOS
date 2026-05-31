@@ -22,7 +22,16 @@ C:\Users\sts\AOS\                   ← Dieses Verzeichnis (UAOS Master)
 │   ├── task.md                     ← Aufgabenliste mit Statusblock
 │   └── walkthrough.md              ← Änderungs- & Testdokumentation
 │
+├── dialog\                         ← Agent-zu-Agent-Kommunikationskanal
+│   ├── README.md                   ← Protokoll & Nutzungsanleitung
+│   └── <thema>\                    ← Pro Thema ein Unterordner
+│       ├── status.md               ← waiting-for-claude | waiting-for-ag | done
+│       ├── from-claude.md          ← Claude Code schreibt hier
+│       └── from-ag.md              ← Antigravity schreibt hier
+│
 ├── scripts\                        ← Geteilte Automatisierungsskripte (z. B. Python, Powershell)
+│   ├── add-skill.ps1               ← Neuen Skill für beide Clients registrieren
+│   ├── dialog-watch.ps1            ← Windows-Notification bei neuer Agent-Nachricht
 │   ├── generate_slides.py          ← Skript zur PPTX-Generierung
 │   └── sync_project.py             ← Repository-Sync-Skript
 │
@@ -113,7 +122,57 @@ C:\Users\sts\AOS\scripts\add-skill.ps1 -CommandName "name-des-neuen-skills"
 
 ---
 
-## 7. Versionskontrolle & Schutz vor Fehlkonfiguration (Git)
+## 7. Agent-zu-Agent-Kommunikation (`dialog\`)
+
+Claude Code und Antigravity können über den `dialog\`-Ordner asynchron miteinander kommunizieren — ohne dass der User als Bote fungiert.
+
+### Protokoll
+
+Jedes Thema bekommt einen Unterordner. Die Agents schreiben abwechselnd:
+
+```
+dialog/<thema>/
+├── status.md        ← "waiting-for-claude" | "waiting-for-ag" | "done" + Rundenzähler
+├── from-claude.md   ← Claude Code schreibt hier (append mit Zeitstempel-Header)
+└── from-ag.md       ← Antigravity schreibt hier (append mit Zeitstempel-Header)
+```
+
+**Übergaberegeln:** Nur schreiben wenn `status` den eigenen Turn anzeigt. Nach dem Schreiben `status` auf den anderen Agent umschalten und `current_round` erhöhen. Bei `current_round > max_rounds` → `status: done`.
+
+### Live-Orchestrierung (dialog-runner.ps1)
+
+Um einen vollautomatischen Dialog zu starten, bei dem die Antworten live im Terminal ausgegeben werden, nutzen Sie das Orchestrierungsskript:
+
+```powershell
+# Einen neuen Dialog starten (AG schreibt die Startfrage und übergibt an Claude)
+C:\Users\sts\AOS\scripts\dialog-runner.ps1 -Topic "tech-stack" -MaxRounds 5 -InitialPrompt "Lass uns über Next.js vs. Vanilla HTML diskutieren."
+
+# Einen bestehenden Dialog fortsetzen
+C:\Users\sts\AOS\scripts\dialog-runner.ps1 -Topic "tech-stack"
+```
+
+#### Funktionsweise des Runners:
+1. **Initialisierung:** Erstellt den Ordner und schreibt die Startfrage von Antigravity in `from-ag.md`.
+2. **Ping-Pong-Schleife:**
+   * Führt im Hintergrund headless Claude Code aus (`npx @anthropic-ai/claude-code -p ... --permission-mode bypassPermissions`).
+   * Liest Claudes Antwort ein und gibt sie live auf der Kommandozeile aus.
+   * Wartet darauf, dass Antigravity an der Reihe ist, und pausiert, bis die Antwort in Antigravitys Chat generiert wurde.
+3. **Durchführung:** Wenn Sie in Antigravity den Befehl `dialog-reply` ausführen (oder über das Chatfenster antworten), erkennt der Runner die Änderung und startet automatisch die nächste Runde mit Claude Code.
+
+### Von Claude initiierte Dialoge (`__cc_trigger__`)
+Claude Code kann eigenständig eine Diskussion vorschlagen. Er legt dazu einen Dialogordner an und platziert darin eine leere Datei namens `__cc_trigger__`.
+
+Wenn Sie `dialog-runner.ps1` ohne Parameter starten, scannt das Skript nach solchen Trigger-Dateien und bietet Ihnen an, den Dialog direkt zu übernehmen:
+
+```powershell
+C:\Users\sts\AOS\scripts\dialog-runner.ps1
+# Zeigt eine Liste gefundener Claude-Triggerthemen zur Auswahl an.
+```
+
+---
+
+
+## 8. Versionskontrolle & Schutz vor Fehlkonfiguration (Git)
 
 Das gesamte UAOS-Masterverzeichnis (`C:\Users\sts\AOS\`) wird per Git versioniert.
 
