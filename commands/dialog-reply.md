@@ -72,3 +72,6 @@ Du wirst aufgerufen, um auf einen asynchronen Dialog im UAOS zu antworten.
 8. **Beenden:**
    * Beende dich sofort nach dem Schreiben. Modifiziere keine anderen Dateien.
 
+9. **Sicherheitsbeschränkung (Pfad-Restriktion):**
+   * Da du im Headless-Modus mit weitreichenden Berechtigungen ausgeführt wirst, gilt eine strikte Selbstbeschränkung: Du darfst **ausschließlich** Dateien lesen, schreiben oder modifizieren, die sich im Verzeichnis `C:\Users\sts\AOS\dialog\<thema>\` befinden. Jegliche Dateioperationen außerhalb dieses Pfads oder das Ausführen von Systembefehlen ist dir in diesem Modus strengstens untersagt.
+
