@@ -20,6 +20,7 @@ New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\sync.md" -Value "C
 New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\git-init.md" -Value "C:\Users\sts\AOS\commands\git-init.md" -Force
 New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\entscheidungsvorlage.md" -Value "C:\Users\sts\AOS\commands\entscheidungsvorlage.md" -Force
 New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\zew-praesentation.md" -Value "C:\Users\sts\AOS\commands\zew-praesentation.md" -Force
+New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\dialog-reply.md" -Value "C:\Users\sts\AOS\commands\dialog-reply.md" -Force
 
 # 2. Hooks verknüpfen
 New-Item -ItemType SymbolicLink -Path "$HOME\.claude\hooks\block-dangerous.sh" -Value "C:\Users\sts\AOS\hooks\block-dangerous.sh" -Force

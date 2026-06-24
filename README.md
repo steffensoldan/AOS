@@ -13,8 +13,7 @@ C:\Users\sts\AOS\                   ← Dieses Verzeichnis (UAOS Master)
 │
 ├── memory\                         ← Geteiltes Langzeitgedächtnis & Standards
 │   ├── global-rules.md             ← Globale Arbeitsanweisungen
-│   ├── git-conventions.md          ← Einheitliche Commit- und Branch-Regeln
-│   └── coding-standards.md         ← Allgemeine Programmier- & Code-Style-Richtlinien
+│   └── MEMORY.md                   ← Index aller Memory-Dateien
 │
 ├── templates\                      ← Geteilte Dateischablonen
 │   ├── PROJECT.md                  ← Projekt-Metadaten & Tech-Stack
@@ -29,17 +28,16 @@ C:\Users\sts\AOS\                   ← Dieses Verzeichnis (UAOS Master)
 │       ├── from-claude.md          ← Claude Code schreibt hier
 │       └── from-ag.md              ← Antigravity schreibt hier
 │
-├── scripts\                        ← Geteilte Automatisierungsskripte (z. B. Python, Powershell)
+├── scripts\                        ← Geteilte Automatisierungsskripte (PowerShell)
 │   ├── add-skill.ps1               ← Neuen Skill für beide Clients registrieren
-│   ├── dialog-watch.ps1            ← Windows-Notification bei neuer Agent-Nachricht
-│   ├── generate_slides.py          ← Skript zur PPTX-Generierung
-│   └── sync_project.py             ← Repository-Sync-Skript
+│   └── pptx-to-png.ps1             ← Konvertiert PPTX in PNGs (visuelle QA)
 │
 ├── commands\                       ← Befehle für Claude Code (Master-Verzeichnis)
 │   ├── sync.md                     ← Symlink in ~/.claude/commands/sync.md
 │   ├── git-init.md                 ← Symlink in ~/.claude/commands/git-init.md
 │   ├── entscheidungsvorlage.md     ← Symlink in ~/.claude/commands/entscheidungsvorlage.md
-│   └── zew-praesentation.md        ← Symlink in ~/.claude/commands/zew-praesentation.md
+│   ├── zew-praesentation.md        ← Symlink in ~/.claude/commands/zew-praesentation.md
+│   └── dialog-reply.md             ← Symlink in ~/.claude/commands/dialog-reply.md
 │
 └── hooks\                          ← Sicherheits-Hooks für Claude Code
     └── block-dangerous.sh          ← Symlink in ~/.claude/hooks/block-dangerous.sh
@@ -57,7 +55,7 @@ Um die ausführbaren Komponenten für **Claude Code** bereitzustellen, müssen s
 
 Antigravity nutzt die Skripte und Konventionen über Wrapper-Skills, die im globalen Plugin-Verzeichnis unter `C:\Users\sts\.gemini\config\plugins\agos-core\` liegen:
 * **Globale Regeln:** Werden geladen, da Antigravity beim Start die `DEVELOPMENT.md` im Projekt-Root liest, welche auf `C:\Users\sts\AOS\memory\global-rules.md` verweist.
-* **Wrapper-Skills:** Die Skills in `agos-core/skills/` rufen direkt die Python-Skripte in `C:\Users\sts\AOS\scripts\` über `uv run` auf.
+* **Wrapper-Skills:** Die Skills in `agos-core/skills/` stellen die Verbindung zu den globalen Konventionen und den lokalen Skripten in `C:\Users\sts\AOS\scripts\` her.
 
 ---
 
@@ -86,9 +84,9 @@ Offene Fragen / Blockaden: [Beschreibung oder "Keine"]
 ## 5. Arbeitsaufteilung (Single-Client-Strategie)
 
 Um Merge-Konflikte und gesperrte Systemressourcen unter Windows zu vermeiden:
-* Jedes Projekt wird primär von **einem** Client bearbeitet. Die Projektordner sind getrennt:
-  * `C:\Users\sts\Projekte-Claude\` (primär für Claude Code)
-  * `C:\Users\sts\Projekte-Antigravity\` (primär für Antigravity)
+* Jedes Projekt wird primär von **einem** Client bearbeitet. Die Projektordner liegen unter `C:\Users\sts\AOS\projects\` und sind getrennt:
+  * `C:\Users\sts\AOS\projects\Projekte-Claude\` (primär für Claude Code)
+  * `C:\Users\sts\AOS\projects\Projekte-Antigravity\` (primär für Antigravity)
 * Eine Übergabe an das jeweils andere Tool findet nur an expliziten **Meilensteinen** statt.
 * **Übergabe-Regel:** Vor der Übergabe müssen alle Änderungen committet (cleaner Git-Status) und gepusht sein und der Statusblock in `task.md` muss aktualisiert sein.
 

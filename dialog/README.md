@@ -40,6 +40,92 @@ Nachrichten werden **angehängt** (append), nie überschrieben.
 
 ---
 
+## Sicherheits- & Synchronisationsregeln (Asynchroner Betrieb)
+
+Um Race Conditions, Zeichensatz-Konflikte und gegenseitiges Überschreiben zu verhindern, gelten folgende Regeln im asynchronen Betrieb:
+
+1. **Atomare Schreibreihenfolge**:
+   * Ein Agent schreibt **zuerst** seinen Beitrag in die entsprechende `from-*.md` Datei und schließt diese.
+   * **Erst als allerletzter Schritt** wird die `status.md` Datei aktualisiert und damit das Schreibrecht (Mutex) an den anderen Agenten übergeben.
+   * Lesende Agenten reagieren ausschließlich auf den Status-Wechsel in `status.md`. Ein Umschalten des Status vor dem Beenden des Schreibvorgangs ist strikt untersagt.
+
+2. **Status als exklusiver Mutex**:
+   * Nur der Agent, der laut `status.md` an der Reihe ist (`waiting-for-claude` bzw. `waiting-for-ag`), hat das Schreibrecht im jeweiligen Dialog-Ordner.
+   * Ein Agent darf unter keinen Umständen in einen Thread schreiben, der ihn aktuell nicht adressiert.
+   * Ausnahme: Das Erstellen des Dialog-Ordners und der erste Eintrag in `from-*.md` durch den Initiator beim Start.
+
+3. **`status: done` ist terminal (endgültig)**:
+   * Sobald ein Dialog den Status `done` erreicht hat, gilt der Thread als permanent geschlossen.
+   * Es dürfen keine weiteren Beiträge angehängt und der Status nicht wieder geändert werden.
+   * Für neuen Klärungsbedarf muss zwingend ein neuer Thread (neues Thema und neuer Ordner) angelegt werden.
+
+4. **UTF-8 ohne BOM erzwingen**:
+   * Alle Dateien (`status.md`, `from-*.md`) müssen zwingend als **UTF-8 ohne BOM (Byte Order Mark)** gespeichert werden, um Parser-Fehler bei CLI-Tools zu vermeiden.
+   * Da Windows PowerShell (insb. Version 5.1) standardmäßig UTF-16 oder UTF-8 mit BOM schreibt, ist die Datei-API von .NET zu verwenden:
+     ```powershell
+     [System.IO.File]::WriteAllText($Path, $Content)
+     ```
+
+5. **Eindeutige Runden-Regelung**:
+   * Der Rundenzähler `current_round` wird ausschließlich vom **Antwortenden (zweiten Sprecher der Runde)** beim Zurückgeben des Status an den Initiator erhöht.
+   * Der Initiator (erste Sprecher der Runde) behält den aktuellen Wert von `current_round` bei, wenn er seinen Beitrag schreibt und den Status übergibt.
+
+---
+
+## Inhaltliche Qualitätsrichtlinien (Debatten-Modus)
+
+Um die Qualität der erarbeiteten Lösungen zu sichern, gilt für beide Agenten im Dialog der "Debatten-Modus":
+* **Kritische Distanz & Risiko-Auswahl:** Kein blindes Abnicken. Entwürfe müssen aktiv auf Schwachstellen geprüft werden. Wird entwarnt, müssen die zwei relevantesten Risikofelder (aus den Bereichen Netzwerk, Datenvolumen, Plattform, Berechtigungen, Ressourcenlimits) begründet benannt und analysiert werden.
+* **Alternativenprüfung:** Technische Entwürfe sind zwingend mit mindestens einer Alternative zu kontrastieren.
+* **Fünfdimensionale Kriterien-Matrix:** Bewertung entlang der Dimensionen *Sicherheit*, *Robustheit*, *Wartbarkeit*, *Usability* und *Compliance*.
+* **ZEW-Compliance-Gate:** Compliance wird als Gate-Kriterium geführt. Hard-Blocker (unkontrollierter Datenabfluss, Online-Zwang zur Laufzeit, unfreie Lizenzen) führen zum Ausschluss. Heilbare Verstöße (z. B. CDN-Fonts) sind nur zulässig, wenn ein klarer Heilungspfad (z. B. Lokalisierung) dokumentiert wird.
+* **Advisory-Modell zur Rundenanpassung:** Rundenverlängerungen werden im Rundenstatement empfohlen und ausschließlich manuell durch den Benutzer in `status.md` eingetragen.
+* **Strikter Verzicht auf Floskeln:** Keine KI-typischen Motivations- und Lobesfloskeln (z. B. "Das ist ein hervorragender Vorschlag"). Der Ton ist präzise, analytisch und direkt.
+
+---
+
+
+## Claude aufrufen (verbindlich, AG-seitig)
+
+> [!IMPORTANT]
+> Claude ist **kein laufender Dienst**, den AG kontaktiert oder „findet". AG **startet Claude
+> selbst** als Headless-Prozess. „Claude erreichen" = das `claude`-Executable starten.
+
+Die `claude`-CLI liegt auf diesem System **nicht im PATH**. AG darf den Pfad **nicht hardcoden**
+(npx-Cache enthält einen Hash, die Desktop-Installation eine Versionsnummer — beide ändern sich
+bei Updates). Stattdessen den Pfad **dynamisch auflösen**:
+
+```powershell
+# 1. claude-Pfad robust auflösen (PATH zuerst, dann bekannte Installationsorte, neueste Version)
+$claude = (Get-Command claude -ErrorAction SilentlyContinue).Source
+if (-not $claude) {
+  $claude = Get-ChildItem `
+      "$env:LOCALAPPDATA\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude-code\*\claude.exe", `
+      "$env:LOCALAPPDATA\npm-cache\_npx\*\node_modules\@anthropic-ai\claude-code\bin\claude.exe" `
+      -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending |
+      Select-Object -First 1 -ExpandProperty FullName
+}
+
+# 2. Claude headless aufrufen — antwortet auf den Dialog und beendet sich selbst
+# --tools Read,Edit,Glob,Grep entzieht Claude die Berechtigung fuer Bash/Terminalbefehle (Sandboxing)
+& $claude -p "Führe das Skill dialog-reply aus. Thema: <thema>. Du bist Claude Code." `
+          --permission-mode bypassPermissions `
+          --tools Read,Edit,Glob,Grep
+```
+
+**Vorbedingungen vor dem Aufruf (AG stellt sie her):**
+1. Ordner `C:\Users\sts\AOS\dialog\<thema>\` existiert.
+2. AGs Beitrag ist an `from-ag.md` angehängt.
+3. `status.md` steht auf `status: waiting-for-claude`.
+
+Claude liest dann den Verlauf, schreibt seine Antwort an `from-claude.md`, setzt
+`status: waiting-for-ag` und beendet sich. AG übernimmt die nächste Runde.
+
+*(Falls `claude` später dauerhaft in den User-PATH eingetragen wird, genügt Schritt 2 mit
+`claude -p ...` direkt — Schritt 1 wird dann übersprungen, ist aber als Fallback unschädlich.)*
+
+---
+
 ## Interaktive Chat-Orchestrierung (Hands-off)
 
 Die Steuerung des Dialogs wird direkt von Antigravity aus der aktiven Chat-Session heraus durchgeführt. Es ist kein separates Terminal-Fenster und kein Runner-Skript nötig:
@@ -48,8 +134,9 @@ Die Steuerung des Dialogs wird direkt von Antigravity aus der aktiven Chat-Sessi
 
 1. **Start:** Der Benutzer gibt Antigravity das Startkommando (z.B. *"Starte einen Dialog mit Claude zum Thema 'X' über 'Y' für 3 Runden."*).
 2. **Antigravity startet:** Schreibt den ersten Beitrag in `from-ag.md` und setzt `status: waiting-for-claude`.
-3. **Claude Code antwortet:** Antigravity startet Claude im Headless-Modus im Hintergrund:
-   `claude -p "..." --permission-mode bypassPermissions`
+3. **Claude Code antwortet:** Antigravity startet Claude im Headless-Modus im Hintergrund —
+   Aufruf exakt wie im Abschnitt [Claude aufrufen (verbindlich, AG-seitig)](#claude-aufrufen-verbindlich-ag-seitig)
+   (Pfad dynamisch auflösen, **nicht** hardcoden).
    Claude führt das Skill `dialog-reply` aus, schreibt seine Antwort in `from-claude.md` und setzt `status: waiting-for-ag`.
 4. **Antigravity antwortet:** Antigravity liest Claudes Antwort ein, formuliert den eigenen Beitrag, hängt ihn an `from-ag.md` an, setzt den Status wieder auf `waiting-for-claude` und startet sofort die nächste Runde.
 5. **Ergebnis:** Sobald `max_rounds` erreicht ist, wird `status: done` gesetzt und Antigravity gibt den gesamten Verlauf gesammelt im Chat aus.
