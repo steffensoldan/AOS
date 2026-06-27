@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$aosPath = "C:\Users\sts\AOS"
+$aosPath = Split-Path $PSScriptRoot -Parent
 $claudePath = "$HOME\.claude"
 $geminiPath = "$HOME\.gemini"
 
@@ -22,7 +22,7 @@ description: Beschreibung des neuen Befehls.
 
 Hier die Logik und Instruktionen für den Befehl.
 "@ | Out-Null
-    Write-Host "Template fuer '$CommandName.md' erstellt in C:\Users\sts\AOS\commands\" -ForegroundColor Yellow
+    Write-Host "Template fuer '$CommandName.md' erstellt in $aosPath\commands\" -ForegroundColor Yellow
 }
 
 # 1. Claude Link erstellen

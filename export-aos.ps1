@@ -1,8 +1,9 @@
 # export-aos.ps1 - Erstellt das saubere ZIP-Archiv fuer die VM-Installation
 $ErrorActionPreference = 'Stop'
 
-$ExportPath = "C:\Users\sts\AOS-export.zip"
-$SourcePath = "C:\Users\sts\AOS"
+$SourcePath = $PSScriptRoot
+$ExportPath = Join-Path (Split-Path $PSScriptRoot -Parent) "AOS-export.zip"
+
 
 Write-Host "=== Erstelle AOS Export-Paket ===" -ForegroundColor Cyan
 

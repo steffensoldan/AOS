@@ -1,8 +1,9 @@
 #Requires -Version 7
 param(
     [Parameter(Mandatory)][string]$Project,
-    [string]$LiveRoot    = "C:\Users\sts\AOS\live",
-    [string]$ProjectRoot = "C:\Users\sts\AOS\projects"
+    [string]$LiveRoot    = (Join-Path (Split-Path $PSScriptRoot -Parent) "live"),
+    [string]$ProjectRoot = (Join-Path (Split-Path $PSScriptRoot -Parent) "projects")
+
 )
 
 Set-StrictMode -Version Latest

@@ -97,7 +97,8 @@ if (Test-Path "$PSScriptRoot\scripts\add-skill.ps1") {
 
 # 7. global-rules.md in globale CLAUDE.md eintragen (idempotent)
 $claudeMdPath = "$HOME\.claude\CLAUDE.md"
-$globalRulesRef = "@C:\Users\sts\AOS\memory\global-rules.md"
+$globalRulesRef = "@$($PSScriptRoot)\memory\global-rules.md"
+
 $existingContent = if (Test-Path $claudeMdPath) { Get-Content $claudeMdPath -Raw } else { "" }
 if ($existingContent -notmatch [regex]::Escape($globalRulesRef)) {
     Add-Content -Path $claudeMdPath -Value "`n$globalRulesRef" -Encoding UTF8NoBOM
