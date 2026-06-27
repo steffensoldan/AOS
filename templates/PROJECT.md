@@ -1,40 +1,27 @@
 # Projekt-Metadaten: [Projektname]
 
-Dieses Dokument beschreibt das Projekt deklarativ und tool-neutral. Es dient als Einstiegspunkt für jeden Agenten (Claude Code & Antigravity).
+Dieses Dokument beschreibt das Projekt deklarativ und tool-neutral. Es dient als primärer Einstiegspunkt (Wiederherstellbarkeit / Zero-Context-Start).
 
 ---
 
-## 1. Projektübersicht
-
-* **Ziel:** [Kurze Beschreibung des Projektziels und des Nutzens]
-* **Status:** [z. B. Konzept / Entwicklung / Produktion]
+## 1. Übersicht & Stakeholder
+* **Ziel:** [Kurzbeschreibung des Nutzens]
 * **Verantwortlicher Client:** [Claude Code | Antigravity]
+* **Maintainer / Bus-Faktor:** [Name / Kontaktperson für Kontextübergabe]
+* **Lizenz:** [z. B. MIT, Apache 2.0, ZEW-Proprietär]
 
----
+## 2. Technologie-Stack & Lauffähigkeit
+* **Core:** [z. B. Python 3.11, Node.js v20]
+* **Datenbank / API:** [z. B. SQLite, Keine]
+* **Styling / UI:** [z. B. Vanilla CSS, Keine]
+* **Paketmanager:** [z. B. npm, pip]
 
-## 2. Technologie-Stack
+## 3. Setup- & Startbefehle (Zero-Context-Befehle)
+* **Abhängigkeiten installieren:** `[Befehl]`
+* **Development Server starten:** `[Befehl]`
+* **Linter ausführen:** `[Befehl]`
+* **Test-Suite ausführen:** `[Befehl]`
+* **Produktions-Build:** `[Befehl]`
 
-* **Core:** [z. B. HTML/JS, Python 3.11, React, Node.js]
-* **Datenbank:** [z. B. PostgreSQL, SQLite, Keine]
-* **Styling/UI:** [z. B. Vanilla CSS, TailwindCSS, PySide6]
-* **Paketmanager:** [z. B. npm, pip, uv, cargo]
-
----
-
-## 3. Testen & Verifizieren
-
-Folgende Befehle müssen zur Verifizierung der Codequalität und Lauffähigkeit verwendet werden:
-
-* **Abhängigkeiten installieren:** `[Befehl, z. B. npm install]`
-* **Development Server starten:** `[Befehl, z. B. npm run dev]`
-* **Linter ausführen:** `[Befehl, z. B. npm run lint]`
-* **Test-Suite ausführen:** `[Befehl, z. B. npm test]`
-* **Produktions-Build erstellen:** `[Befehl, z. B. npm run build]`
-
----
-
-## 4. Wichtige Verzeichnisse & Strukturen
-
-* `[Pfad 1]`: [Beschreibung, z. B. /src/components - React Komponenten]
-* `[Pfad 2]`: [Beschreibung, z. B. /tests - Unit Tests]
-* `[Pfad 3]`: [Beschreibung]
+## 4. Verzeichnisse & Struktur
+* `[Relativer Pfad]`: [Beschreibung]

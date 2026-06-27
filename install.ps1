@@ -15,6 +15,22 @@ if ($badFiles) {
 }
 Write-Host "Integritätsprüfung: OK" -ForegroundColor Green
 
+# 1.5 Validierung verschachtelter CLAUDE.md auf relative Pfad-Hop-Verstöße (Option C+A)
+Write-Host "Prüfe verschachtelte CLAUDE.md auf Pfad-Hops..." -ForegroundColor Cyan
+$nestedClaudes = Get-ChildItem -Path $PSScriptRoot -Recurse -Filter "CLAUDE.md" -ErrorAction SilentlyContinue |
+    Where-Object { $_.DirectoryName -ne $PSScriptRoot -and $_.DirectoryName -ne "$HOME\.claude" }
+
+foreach ($file in $nestedClaudes) {
+    $content = Get-Content $file.FullName -Raw
+    if ($content -match "@\.\./") {
+        Write-Warning "WARNUNG: Relative Pfad-Hop-Direktive in verschachtelter CLAUDE.md gefunden:"
+        Write-Warning "  $($file.FullName)"
+        Write-Warning "  Bitte vermeiden Sie relative Imports mit '../' in Sub-Projekten (Option C+A)."
+        Write-Warning "  Nutzen Sie stattdessen die Vererbung oder erstellen Sie separate Rules ohne relative Hops."
+    }
+}
+
+
 # 2. Entwicklermodus pruefen
 $devMode = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" -Name "AllowDevelopmentWithoutDevLicense" -ErrorAction SilentlyContinue
 if ($null -eq $devMode -or $devMode.AllowDevelopmentWithoutDevLicense -ne 1) {

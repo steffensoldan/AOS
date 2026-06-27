@@ -87,11 +87,14 @@
 ## Coding-Regeln & Übergabefähigkeit (Slim & Clean Code)
 
 - **Schlankheit (Slim Code):** Code soll so minimalistisch wie möglich sein. Keine unnötigen Bibliotheken oder Framework-Bloat. Bevorzuge Vanilla-Lösungen (z. B. Vanilla CSS, native APIs), sofern nicht explizit anders verlangt. Keine toten Codefragmente, Konsolen-Logs oder ungenutzten Importe im finalen Code.
+- **Spec-Statement vor Implementierung (Think Before Coding):** Vor jeder Implementierung mit mehr als einer geänderten Datei oder mehr als 20 Zeilen Neucode gibt der Agent ein kurzes Spec-Statement ab (Scope, geplante Änderungen, explizite Trade-offs) und wartet die Freigabe des Users ab.
+- **Strikte Datei-Eingrenzung (Surgical Changes):** Ausschließlich Dateien modifizieren, die im aktuellen Task/Scope definiert sind. Keine kosmetischen Anpassungen, Stil-Refactorings oder Kommentar-Ergänzungen an nicht-task-relevantem Code. Ausnahmen müssen im Output explizit benannt werden.
 - **Verständlichkeit:** Code muss selbsterklärend sein. Nutze sprechende Variablen- und Funktionsnamen in englischer Sprache. Komplexe Algorithmen oder Designentscheidungen präzise auf Deutsch kommentieren.
 - **Portabilität (Keine Hardcodierung):** Keine systemspezifischen absoluten Pfade oder sensiblen Zugangsdaten im Code. Pfade müssen relativ sein; Konfigurationen und API-Keys gehören in Umgebungsvariablen (mit einer `.env.example` als Vorlage im Repo).
 - **Projektdokumentation (PROJECT.md):** Jedes Projekt muss ein aktuelles `PROJECT.md` im Root besitzen. Dieses dokumentiert präzise den Tech-Stack, Setup- und Startbefehle sowie die Verzeichnisstruktur, sodass eine Fremdperson (oder ein neuer Agent) das Projekt mit einem Befehl starten kann.
 - **Fehlerfreie Lauffähigkeit:** Der Code muss fehlerfrei bauen, linten und alle Tests bestehen, bevor er übergeben wird.
 - **Änderungsnachweis (Walkthrough):** Größere Änderungen müssen in einem `walkthrough.md` dokumentiert und logisch in Git-Commits aufgeteilt werden.
+
 
 ## Memory-Hinweis
 
