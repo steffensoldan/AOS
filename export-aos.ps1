@@ -70,7 +70,7 @@ if (Test-Path $TempPath) {
 New-Item -ItemType Directory -Path $TempPath | Out-Null
 
 # Kopiere nur relevante Ordner
-$FoldersToCopy = @("memory", "templates", "commands", "hooks", "scripts", "dialog")
+$FoldersToCopy = @("memory", "templates", "commands", "hooks", "scripts", "dialog", "ops")
 foreach ($folder in $FoldersToCopy) {
     if (Test-Path "$SourcePath\$folder") {
         Copy-Item -Path "$SourcePath\$folder" -Destination "$TempPath\$folder" -Recurse -Force
@@ -79,13 +79,14 @@ foreach ($folder in $FoldersToCopy) {
 }
 
 # Root-Dateien kopieren
-$FilesToCopy = @("README.md", "SETUP.md", ".gitignore", "install.ps1", "MOBILE.md")
+$FilesToCopy = @("README.md", "SETUP.md", ".gitignore", "install.ps1", "MOBILE.md", "CLAUDE.md")
 foreach ($file in $FilesToCopy) {
     if (Test-Path "$SourcePath\$file") {
         Copy-Item -Path "$SourcePath\$file" -Destination "$TempPath\$file" -Force
         Write-Host "Kopiert Datei: $file" -ForegroundColor Gray
     }
 }
+
 
 # Globale CLAUDE.md auslesen und einpacken
 $claudeGlobal = "$env:USERPROFILE\.claude\CLAUDE.md"
