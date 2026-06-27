@@ -8,7 +8,8 @@ $badFiles = Get-ChildItem -Path $PSScriptRoot -Recurse -Include "*.env","*.env.*
     Where-Object { $_.Name -notmatch "\.(example|template|sample)$" }
 
 if ($badFiles) {
-    Write-Error "ABORT: Integritätsverletzung — Secrets im Installationspaket entdeckt:"
+    Write-Error "ABORT: Integritätsverletzung - Secrets im Installationspaket entdeckt:"
+
     $badFiles | ForEach-Object { Write-Error "  $($_.FullName)" }
     Write-Error "Bitte bereinigen Sie die Quelle und erstellen Sie den Export neu."
     exit 1

@@ -67,7 +67,8 @@ if ($running -eq $container) {
     Write-Host "Neustart: $container"
     docker restart $container
 } else {
-    Write-Host "Container $container nicht aktiv — kein Neustart erforderlich."
+    Write-Host "Container $container nicht aktiv - kein Neustart erforderlich."
 }
+
 
 Write-Host "Deploy abgeschlossen: $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
