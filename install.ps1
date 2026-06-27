@@ -95,9 +95,29 @@ if (Test-Path "$PSScriptRoot\scripts\add-skill.ps1") {
     }
 }
 
-# 7. global-rules.md in globale CLAUDE.md eintragen (idempotent)
+# 7. Entpackte CLAUDE.md aus dem ZIP anwenden (falls vorhanden)
+$zipClaudeMd = Join-Path $PSScriptRoot ".claude\CLAUDE.md"
+if (Test-Path $zipClaudeMd) {
+    $claudeGlobalDir = "$HOME\.claude"
+    if (-not (Test-Path $claudeGlobalDir)) { New-Item -ItemType Directory -Path $claudeGlobalDir -Force | Out-Null }
+    Copy-Item -Path $zipClaudeMd -Destination $claudeGlobalDir -Force
+    Write-Host "Globale CLAUDE.md aus Export-Paket installiert." -ForegroundColor Green
+}
+
+# 8. global-rules.md in globale CLAUDE.md eintragen (idempotent und bereinigt)
 $claudeMdPath = "$HOME\.claude\CLAUDE.md"
 $globalRulesRef = "@$($PSScriptRoot)\memory\global-rules.md"
+
+# Bereinige eventuelle veraltete Pfade zu global-rules.md aus dem Export-Paket
+if (Test-Path $claudeMdPath) {
+    $content = Get-Content $claudeMdPath
+    # Entferne alle Zeilen, die ein Include von global-rules.md enthalten
+    $cleanedContent = $content | Where-Object { $_ -notmatch '@.*\\memory\\global-rules\.md' }
+    
+    # Schreibe bereinigten Inhalt ohne BOM zurück
+    $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+    [System.IO.File]::WriteAllLines($claudeMdPath, $cleanedContent, $utf8NoBom)
+}
 
 $existingContent = if (Test-Path $claudeMdPath) { Get-Content $claudeMdPath -Raw } else { "" }
 if ($existingContent -notmatch [regex]::Escape($globalRulesRef)) {
@@ -106,15 +126,6 @@ if ($existingContent -notmatch [regex]::Escape($globalRulesRef)) {
     Write-Host "global-rules.md in CLAUDE.md verknüpft." -ForegroundColor Green
 }
 
-
-# 8. Entpackte CLAUDE.md aus dem ZIP anwenden (falls vorhanden)
-$zipClaudeMd = Join-Path $PSScriptRoot ".claude\CLAUDE.md"
-if (Test-Path $zipClaudeMd) {
-    $claudeGlobalDir = "$HOME\.claude"
-    if (-not (Test-Path $claudeGlobalDir)) { New-Item -ItemType Directory -Path $claudeGlobalDir -Force | Out-Null }
-    Copy-Item -Path $zipClaudeMd -Destination $claudeGlobalDir -Force
-    Write-Host "Globale CLAUDE.md aus Export-Paket installiert." -ForegroundColor Green
-}
 
 Write-Host "=== UAOS Installation abgeschlossen ===" -ForegroundColor Cyan
 Write-Host ""
