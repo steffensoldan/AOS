@@ -14,3 +14,8 @@ yarn-error.log*
 # Projects folder containing separate git repositories
 projects/
 
+# Ignore secrets
+.env
+*.key
+*.pem
+secrets.json
