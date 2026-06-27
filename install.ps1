@@ -101,9 +101,11 @@ $globalRulesRef = "@$($PSScriptRoot)\memory\global-rules.md"
 
 $existingContent = if (Test-Path $claudeMdPath) { Get-Content $claudeMdPath -Raw } else { "" }
 if ($existingContent -notmatch [regex]::Escape($globalRulesRef)) {
-    Add-Content -Path $claudeMdPath -Value "`n$globalRulesRef" -Encoding UTF8NoBOM
+    $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+    [System.IO.File]::AppendAllText($claudeMdPath, "`r`n$globalRulesRef`r`n", $utf8NoBom)
     Write-Host "global-rules.md in CLAUDE.md verknüpft." -ForegroundColor Green
 }
+
 
 # 8. Entpackte CLAUDE.md aus dem ZIP anwenden (falls vorhanden)
 $zipClaudeMd = Join-Path $PSScriptRoot ".claude\CLAUDE.md"
