@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse-Guardrail für Claude Code.
 # Blockt offensichtlich destruktive Bash-Befehle, bevor sie ausgeführt werden.
-# Aktivierung über settings.json (siehe README am Ende dieser Anleitung).
+# Aktivierung über ~/.claude/settings.json (PreToolUse). Siehe README Abschnitt 3 "Setup & Sicherheits-Hook aktivieren" — install.ps1 setzt dies automatisch.
 #
 # Funktionsweise: Claude Code übergibt das Tool-Event als JSON via stdin.
 # Exit-Code 2 = Befehl blockieren. Exit-Code 0 = erlauben.
@@ -11,7 +11,14 @@ set -euo pipefail
 # JSON vom stdin lesen
 INPUT="$(cat)"
 
-# Auszuführenden Befehl extrahieren (jq erforderlich: brew install jq / apt install jq)
+# jq ist Pflicht. Fehlt es, FAIL-CLOSED (blockieren) statt unsicher durchlassen.
+if ! command -v jq >/dev/null 2>&1; then
+  echo "BLOCKIERT: 'jq' nicht gefunden — Guardrail kann Befehl nicht prüfen." >&2
+  echo "Installiere jq (z. B. 'winget install jqlang.jq' / 'apt install jq') und wiederhole." >&2
+  exit 2
+fi
+
+# Auszuführenden Befehl extrahieren
 CMD="$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"
 
 # Wenn kein Befehl vorhanden ist (z. B. anderes Tool als Bash), durchlassen
@@ -33,6 +40,15 @@ PATTERNS=(
   '>[[:space:]]*/dev/sd'                     # direkt auf Block-Device schreiben
   ':\(\)\{.*\};:'                            # Fork-Bomb
   'chmod[[:space:]]+-R[[:space:]]+777'       # Rechte aufreißen
+  # --- PowerShell-Destruktivmuster (Windows-Realität: Agent ruft ggf. powershell -c ...) ---
+  'Remove-Item[[:space:]].*-Recurse.*-Force'  # rekursives Hard-Delete
+  'Remove-Item[[:space:]].*-Force.*-Recurse'  # Reihenfolge umgekehrt
+  '(^|[[:space:]])(rd|rmdir)[[:space:]]+/[sS]' # rd /s
+  '(^|[[:space:]])del[[:space:]]+/[sS]'        # del /s
+  'Format-Volume'                              # Volume formatieren
+  'Clear-Disk'                                  # Disk leeren
+  'Remove-Item[[:space:]]+.*\\\*'              # Wildcard-Delete
+  'git[[:space:]]+push[[:space:]].*-Force'     # erzwungener Push (PS-Casing)
 )
 
 for pat in "${PATTERNS[@]}"; do

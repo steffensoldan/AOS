@@ -1,4 +1,4 @@
-# CLAUDE.md (AOS - Agent Operating System)
+# CLAUDE.md (AOS - Agentic Operating System)
 
 This file provides workspace-specific guidelines for Claude Code when working in the AOS repository.
 
@@ -6,7 +6,7 @@ This file provides workspace-specific guidelines for Claude Code when working in
 @memory/global-rules.md
 
 ## Repository Overview
-The Agent Operating System (AOS) is a private, lightweight system for managing agent environments, documentation, custom slash-commands, hooks, and active project workspaces.
+The Agentic Operating System (AOS) is a private, lightweight system for managing agent environments, documentation, custom slash-commands, hooks, and active project workspaces.
 
 - **`commands/`**: Slash-commands for Claude Code (e.g., sync, git-init, entscheidungsvorlage).
 - **`dialog/`**: Dialogue history templates and active threads.
@@ -19,7 +19,7 @@ The Agent Operating System (AOS) is a private, lightweight system for managing a
 ## Common Commands
 
 ```powershell
-# Install/Update UAOS on the current system (idempotent symlinks & rules)
+# Install/Update AOS on the current system (idempotent symlinks & rules)
 powershell .\install.ps1
 
 # Export a clean, secret-free AOS package to ZIP for mobile/VM migration

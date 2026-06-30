@@ -18,7 +18,7 @@ Template-Editing-Workflow ist Pflicht — **nicht** Folien-XML von Hand neu erfi
 1. **Existiert ein in PowerPoint gestaltetes Quell-Deck** (z. B. `input/*.pptx`, das Aufbau
    und Inhalt vorgibt)? → **Dieses als Template nehmen** und Inhalte verfeinern. Native
    PowerPoint-Optik bleibt erhalten — das ist der wichtigste Qualitätshebel.
-2. Sonst die ZEW-Basisvorlage: `C:\Users\sts\Documents\Claude\Vorlage PPT.pptx`
+2. Sonst die ZEW-Basisvorlage: `<AOS_ROOT>\templates\Vorlage PPT.pptx`
 
 Folien aus Layouts neu zu generieren ist nur die letzte Option (kein Quell-Deck, keine Vorlage).
 
@@ -61,7 +61,7 @@ Der `soffice`+`pdftoppm`-Pfad des pptx-Skills läuft hier **nicht**. Stattdessen
 PowerPoint-COM:
 
 ```powershell
-powershell -File C:\Users\sts\AOS\scripts\pptx-to-png.ps1 -Pptx "<deck>.pptx"
+powershell -File <AOS_ROOT>\scripts\pptx-to-png.ps1 -Pptx "<deck>.pptx"
 # erzeugt <deck-Ordner>\render\Folie1.PNG …
 ```
 

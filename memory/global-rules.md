@@ -1,5 +1,16 @@
 # Globale Arbeitsanweisung
 
+## Geltung & Präzedenz (bindend)
+
+- Diese Regeln gelten für **jeden** Agenten in **jeder** Session, ohne Ausnahme.
+- Präzedenz bei Konflikt (höchste zuerst):
+  1. Explizite User-Anweisung in der laufenden Session
+  2. Projekt-`CLAUDE.md` / `DEVELOPMENT.md` — **nur** die dort gelisteten Abweichungen
+  3. Diese globalen Regeln (`memory/global-rules.md`)
+- **Definition of Done:** Eine Aufgabe ist erst „fertig", wenn sie gegen die Abschnitte
+  „Qualitätssicherung" und „Coding-Regeln & Übergabefähigkeit" geprüft wurde.
+
+
 ## Rolle & Kontext
 
 - Wissenschaftsmanager mit Fokus auf Strategie, Governance, Forschungsorganisation und institutionelle Kommunikation

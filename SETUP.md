@@ -1,29 +1,36 @@
-# UAOS Setup: Symbolische Links unter Windows
+# AOS Setup (Fallback): Manuelle Verknüpfung
 
-Diese Anleitung beschreibt die einmalige Einrichtung der symbolischen Links (Symlinks), um die UAOS-Befehle und Hooks für **Claude Code** auf diesem System verfügbar zu machen.
+> **Standardweg ist `install.ps1`** (idempotent, setzt Symlinks/Hardlinks, verdrahtet den Hook,
+> registriert Skills, setzt `$env:AOS_ROOT`). Diese Anleitung ist nur der **Fallback**,
+> falls der Installer nicht nutzbar ist. Verifikation in beiden Fällen:
+> `powershell <AOS_ROOT>\install.ps1 -Verify`.
 
 ---
 
 ## Voraussetzungen
 
-Stellen Sie sicher, dass in den Windows-Systemeinstellungen der **Entwicklermodus** (Developer Mode) aktiviert ist. Dadurch können symbolische Links ohne Administratorrechte erstellt werden.
+`<AOS_ROOT>` ist das Wurzelverzeichnis dieses Repos. Hardlinks benötigen **keinen**
+Entwicklermodus und keine Administratorrechte (Quelle und Ziel auf demselben Laufwerk).
 
 ---
 
-## Einrichtung der Links
+## Einrichtung der Links (Hardlinks, konsistent mit install.ps1)
 
-Führen Sie die folgenden Befehle in einer **PowerShell-Konsole** aus:
+In einer **PowerShell-Konsole** ausführen:
 
 ```powershell
-# 1. Commands verknüpfen
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\sync.md" -Value "C:\Users\sts\AOS\commands\sync.md" -Force
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\git-init.md" -Value "C:\Users\sts\AOS\commands\git-init.md" -Force
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\entscheidungsvorlage.md" -Value "C:\Users\sts\AOS\commands\entscheidungsvorlage.md" -Force
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\zew-praesentation.md" -Value "C:\Users\sts\AOS\commands\zew-praesentation.md" -Force
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\commands\dialog-reply.md" -Value "C:\Users\sts\AOS\commands\dialog-reply.md" -Force
+# 0. AOS_ROOT setzen (an euren Pfad anpassen)
+$env:AOS_ROOT = "C:\Users\<user>\AOS"
 
-# 2. Hooks verknüpfen
-New-Item -ItemType SymbolicLink -Path "$HOME\.claude\hooks\block-dangerous.sh" -Value "C:\Users\sts\AOS\hooks\block-dangerous.sh" -Force
+# 1. Commands verknüpfen (alle .md im commands-Ordner)
+Get-ChildItem "$env:AOS_ROOT\commands" -Filter *.md | ForEach-Object {
+    New-Item -ItemType HardLink -Path "$HOME\.claude\commands\$($_.Name)" -Value $_.FullName -Force | Out-Null
+}
+
+# 2. Safety-Hook verknüpfen
+New-Item -ItemType HardLink -Path "$HOME\.claude\hooks\block-dangerous.sh" `
+         -Value "$env:AOS_ROOT\hooks\block-dangerous.sh" -Force | Out-Null
 ```
 
-*Hinweis: Neue Skills, die über das Skript `add-skill.ps1` erstellt werden, werden automatisch über Hard Links verknüpft, sodass hierfür keine manuellen Symlinks angelegt werden müssen.*
+*Hinweis: Neue Skills über `add-skill.ps1` werden standardmäßig per Symlink verknüpft.*
+*Den PreToolUse-Hook in `~/.claude/settings.json` siehe README Abschnitt 3.*

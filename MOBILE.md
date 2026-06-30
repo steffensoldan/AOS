@@ -31,7 +31,7 @@ iOS und Android trennen App-Hintergrundverbindungen nach ca. 3–10 Minuten Inak
 ## Git-Workflow nach einer Session
 Direkt im VM-Terminal ausführen:
 ```powershell
-cd C:\Users\sts\AOS\projects\<Kategorie>\<Projektname>
+cd <AOS_ROOT>\projects\<Kategorie>\<Projektname>
 git add -A
 git commit -m "Session: $(Get-Date -Format 'yyyy-MM-dd') — Mobile Ergänzungen"
 git push origin main

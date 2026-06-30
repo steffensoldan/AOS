@@ -1,4 +1,4 @@
-# UAOS Agent-Dialog
+# AOS Agent-Dialog
 
 Asynchroner Kommunikationskanal zwischen Claude Code (CC) und Antigravity (AG).
 Ermöglicht strukturierte Diskussionen zwischen den Agents — mit oder ohne User.
@@ -22,14 +22,14 @@ dialog/<thema>/
 status: waiting-for-claude | waiting-for-ag | done
 max_rounds: 10
 current_round: 1
-started: JJJJ-MM-TT
+started: YYYY-MM-DD
 topic: Kurzbeschreibung des Themas
 ```
 
 ### Nachrichtenformat (in from-*.md)
 
 ```markdown
-**[JJJJ-MM-TT, Claude Code — Runde N]**
+**[YYYY-MM-DD, Claude Code — Runde N]**
 
 Nachrichtentext...
 
@@ -74,17 +74,10 @@ Um Race Conditions, Zeichensatz-Konflikte und gegenseitiges Überschreiben zu ve
 
 ## Inhaltliche Qualitätsrichtlinien (Debatten-Modus)
 
-Um die Qualität der erarbeiteten Lösungen zu sichern, gilt für beide Agenten im Dialog der "Debatten-Modus":
-* **Kritische Distanz & Risiko-Auswahl:** Kein blindes Abnicken. Entwürfe müssen aktiv auf Schwachstellen geprüft werden. Wird entwarnt, müssen die zwei relevantesten Risikofelder (aus den Bereichen Netzwerk, Datenvolumen, Plattform, Berechtigungen, Ressourcenlimits) begründet benannt und analysiert werden.
-* **Alternativenprüfung:** Technische Entwürfe sind zwingend mit mindestens einer Alternative zu kontrastieren.
-* **Fünfdimensionale Kriterien-Matrix:** Bewertung entlang der Dimensionen *Sicherheit*, *Robustheit*, *Wartbarkeit*, *Usability* und *Compliance*.
-* **ZEW-Compliance-Gate:** Compliance wird als Gate-Kriterium geführt. Hard-Blocker (unkontrollierter Datenabfluss, Online-Zwang zur Laufzeit, unfreie Lizenzen) führen zum Ausschluss. Heilbare Verstöße (z. B. CDN-Fonts) sind nur zulässig, wenn ein klarer Heilungspfad (z. B. Lokalisierung) dokumentiert wird.
-* **Advisory-Modell zur Rundenanpassung:** Rundenverlängerungen werden im Rundenstatement empfohlen und ausschließlich manuell durch den Benutzer in `status.md` eingetragen.
-* **Strikter Verzicht auf Floskeln:** Keine KI-typischen Motivations- und Lobesfloskeln (z. B. "Das ist ein hervorragender Vorschlag"). Der Ton ist präzise, analytisch und direkt.
-
----
-
-
+Verbindlich für beide Agenten im Dialog. **Single Source of Truth:**
+[`memory/debate-mode.md`](../memory/debate-mode.md) — kritische Distanz,
+Alternativenprüfung, fünfdimensionale Kriterien-Matrix, Compliance-Gate,
+Runden-Dynamik und Stil. Dieser Abschnitt dupliziert die Regeln nicht.
 ## Claude aufrufen (verbindlich, AG-seitig)
 
 > [!IMPORTANT]
@@ -114,7 +107,7 @@ if (-not $claude) {
 ```
 
 **Vorbedingungen vor dem Aufruf (AG stellt sie her):**
-1. Ordner `C:\Users\sts\AOS\dialog\<thema>\` existiert.
+1. Ordner `<AOS_ROOT>\dialog\<thema>\` existiert.
 2. AGs Beitrag ist an `from-ag.md` angehängt.
 3. `status.md` steht auf `status: waiting-for-claude`.
 
@@ -163,3 +156,4 @@ Sobald der Benutzer Antigravity bittet, nach offenen Dialogen zu suchen, liest A
 |---|---|---|---|
 | `stufe-2-konzept` | 1 | offen | CC stellt Fragen zu AG-Loop-Mechanismus |
 | `uaos-overhead-check` | 3 | done | Lightweight-Modus beschlossen, git-init angepasst |
+| `aos-optimierung` | 3 | done | 5 Nachbesserungen vereinbart (Symlink-Default, Fail-Fast-Prüfung, Allowlist-ZIP-Export) |
