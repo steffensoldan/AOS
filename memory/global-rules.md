@@ -105,6 +105,7 @@
 - **Projektdokumentation (PROJECT.md):** Jedes Projekt muss ein aktuelles `PROJECT.md` im Root besitzen. Dieses dokumentiert präzise den Tech-Stack, Setup- und Startbefehle sowie die Verzeichnisstruktur, sodass eine Fremdperson (oder ein neuer Agent) das Projekt mit einem Befehl starten kann.
 - **Fehlerfreie Lauffähigkeit:** Der Code muss fehlerfrei bauen, linten und alle Tests bestehen, bevor er übergeben wird.
 - **Änderungsnachweis (Walkthrough):** Größere Änderungen müssen in einem `walkthrough.md` dokumentiert und logisch in Git-Commits aufgeteilt werden.
+- **Workspace-Hygiene & Dateiaufräumung:** Vor jeder Übergabe müssen temporäre Prüf-, Test- und Debug-Skripte (z. B. `check_*.py`, Einmal-Restores, Test-Dumps) aus dem Stammverzeichnis entfernt oder nach `scratch/` ausgelagert werden. Nicht-versionierte Hilfs- und Umgebungspfade (z. B. `scratch/`, `venv_deploy/`) gehören in `.gitignore`.
 
 
 ## Memory-Hinweis
