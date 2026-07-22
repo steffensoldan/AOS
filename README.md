@@ -65,6 +65,7 @@ Agent-Dialog liegen als Dateien vor; jeder Agent liest und schreibt sie nach fes
 │   ├── implementation_plan.md       ← Technische Spezifikation (Spec-First)
 │   ├── task.md                      ← Aufgabenliste mit Statusblock
 │   ├── walkthrough.md               ← Änderungs- & Testdokumentation
+│   ├── .env.example                 ← Vorlage für Umgebungsvariablen (Zero-Plaintext-Policy)
 │   └── GOVERNANCE.md                ← Lifecycle, IP, Risiko, TCO, Barrierefreiheit
 │
 ├── commands\                        ← Slash-Commands für Claude Code (Master)
@@ -77,7 +78,7 @@ Agent-Dialog liegen als Dateien vor; jeder Agent liest und schreibt sie nach fes
 │   └── <thema>\                     ← Pro Thema: status.md, from-claude.md, from-ag.md
 │
 ├── hooks\                           ← Sicherheits-Hooks für Claude Code
-│   ├── block-dangerous.sh           ← PreToolUse-Guardrail gegen destruktive Befehle (Bash + PowerShell)
+│   ├── block-dangerous.sh           ← PreToolUse-Guardrail gegen destruktive Befehle & Secret-Leaks (Bash + PowerShell)
 │   └── test-block-dangerous.sh      ← Regressionstest der Guardrail-Muster
 │
 ├── scripts\                         ← Geteilte Automatisierung (PowerShell)
