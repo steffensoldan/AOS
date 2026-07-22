@@ -41,3 +41,11 @@ t "git status" ALLOW "git status"
 t "git push origin main" ALLOW "git push (normal)"
 t "powershell Remove-Item .\\tmp.txt" ALLOW "Remove-Item einzeln"
 t "npm install" ALLOW "npm install"
+
+echo "=== Secret Detection Test ==="
+SECRET_LINE="+    password = 'Sonne2017'"
+if printf '%s' "$SECRET_LINE" | grep -Eq '^\+[^+].*(password|passwd|pwd|secret|api_key|apikey)[[:space:]]*=[[:space:]]*['"'"'"][^'"'"'"]{4,}['"'"'"]'; then
+  echo "  PASS [BLOCK] Staged plaintext password correctly detected"
+else
+  echo "  FAIL Staged plaintext password NOT detected"
+fi

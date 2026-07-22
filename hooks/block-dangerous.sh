@@ -51,6 +51,15 @@ PATTERNS=(
   'git[[:space:]]+push[[:space:]].*-Force'     # erzwungener Push (PS-Casing)
 )
 
+# Check auf Inline-Secrets oder Secret-Commit (Pre-Commit Guardrail)
+if printf '%s' "$CMD" | grep -Eq '^[[:space:]]*git[[:space:]]+commit'; then
+  if git diff --cached -U0 2>/dev/null | grep -Eq '^\+[^+].*(password|passwd|pwd|secret|api_key|apikey)[[:space:]]*=[[:space:]]*['"'"'"][^'"'"'"]{4,}['"'"'"]|^\+[^+].*-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'; then
+    echo "BLOCKIERT durch Guardrail: Mögliches Klartext-Passwort oder Private Key im Git-Staging erkannt." >&2
+    echo "Bitte Zugangsdaten aus dem Code entfernen und auf os.getenv() / .env umstellen." >&2
+    exit 2
+  fi
+fi
+
 for pat in "${PATTERNS[@]}"; do
   if printf '%s' "$CMD" | grep -Eq "$pat"; then
     # stderr-Text erscheint für Claude und den Nutzer; Exit 2 blockt
