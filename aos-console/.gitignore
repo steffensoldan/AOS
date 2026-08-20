@@ -1,0 +1,10 @@
+# Temporäre Arbeits- und Debug-Dateien
+scratch/
+*.log
+
+# Betriebssystem / Editor
+.DS_Store
+Thumbs.db
+
+# Hinweis: aos-console.html ist die generierte Auslieferungsdatei (aus build.py)
+# und wird bewusst mitversioniert, damit der Prototyp ohne Build-Schritt öffenbar ist.
