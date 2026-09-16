@@ -1,19 +1,26 @@
 ---
 name: dialog-start
-description: Startet einen Agent-Dialog über dialog-lite aus der Desktop-App heraus - öffnet den Dialog, reicht die eigene Sonde ein und übergibt an den Loop. Aufruf via /dialog-start <slug> | <thema> | <partner>.
+description: Startet einen Agent-Dialog über dialog-lite aus der Desktop-App heraus - öffnet den Dialog, reicht die eigene Sonde ein und übergibt an den Loop. Aufruf via /dialog-start <thema> | <partner> | <slug>.
 ---
 
 Starte einen Agent-Dialog über den MCP-Server `aos-dialog`. Kein Terminal für den Benutzer — du machst alles selbst.
 
-Argumente: $ARGUMENTS — erwartet `<slug> | <thema> | <partner>`, mit Pipe getrennt.
+Argumente: $ARGUMENTS — erwartet `<thema> | <partner> | <slug>`, mit Pipe getrennt. Nur das Thema ist Pflicht.
 
-## 1. Argumente prüfen
+## 1. Argumente prüfen und den Slug festlegen
 
-- **Slug:** nur Kleinbuchstaben, Ziffern, Bindestriche. Er wird Dateiname unter `dialoge\`.
-- **Thema:** eine vollständige Frage, keine Überschrift. Je enger und prüfbarer, desto brauchbarer der Dialog.
+- **Thema:** eine vollständige Frage, keine Überschrift. Je enger und prüfbarer, desto brauchbarer der Dialog. Fehlt es, FRAGE im Chat nach — rate nicht.
 - **Partner:** `goose` oder `antigravity`. Fehlt er, nimm `goose`.
+- **Slug:** wurde einer angegeben, prüfe ihn; sonst leite ihn aus dem Thema ab.
 
-Fehlt Slug oder Thema, FRAGE im Chat nach. Rate nicht. Eine Rückfrage, dann arbeite weiter.
+**Regel für den Slug:** nur Kleinbuchstaben, Ziffern und Bindestriche. Umlaute umschreiben
+(ae oe ue ss), Leerzeichen zu Bindestrichen, alles übrige entfernen, höchstens etwa 40 Zeichen.
+Beispiel: „Sind die Ziele des AOS angemessen?" → `aos-ziele-angemessen`.
+
+**Leg den Slug einmal fest und verwende danach ausnahmslos diesen einen Wert** — in
+`dialog_open`, in `dialog_probe` und in der Kommandozeile des Loops. Weicht er zwischen Server
+und Skript ab, sucht das Skript eine Datei, die es nicht gibt, sieht `state: absent` und
+eröffnet einen **zweiten** Dialog. Nenne den festgelegten Slug im Chat.
 
 ## 2. Selbst nachsehen, bevor du sondierst
 

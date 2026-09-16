@@ -27,18 +27,29 @@ MCP auf. Erst für die Züge des *anderen* übergibt er an den Loop, und zwar im
 
 | Oberfläche | Artefakt | Auslösung im Chat |
 |---|---|---|
-| Claude Code Desktop-App | `commands/dialog-start.md` | `/dialog-start <slug> \| <thema> \| <partner>` |
+| Claude Code Desktop-App | `commands/dialog-start.md` | `/dialog-start <thema> \| <partner> \| <slug>` |
 | Antigravity | `~/.gemini/config/plugins/agos-core/skills/dialog-start/SKILL.md` | Skill im Chat aufrufen |
 | Goose Desktop | `recipes/dialog-start.yaml` | Recipe „AOS Dialog starten“ aus der Recipe-Liste wählen |
 
 ### Claude Code
 
 ```
-/dialog-start export-allowlist | Allowlist oder Denylist im Secret-Check von export-aos.ps1? | goose
+/dialog-start Allowlist oder Denylist im Secret-Check von export-aos.ps1? | goose
 ```
 
-Slug, Thema und Partner mit Pipe getrennt. Fehlt der Partner, wird `goose` angenommen. Fehlen
-Slug oder Thema, fragt Claude im Chat nach.
+Nur das Thema ist Pflicht. Fehlt der Partner, wird `goose` angenommen; fehlt der Slug, leitet
+Claude ihn aus dem Thema ab und nennt ihn im Chat.
+
+**Einmalig registrieren**, sonst kennt Claude Code den Befehl nicht:
+
+```powershell
+powershell <AOS_ROOT>\scriptsdd-skill.ps1 -CommandName dialog-start
+```
+
+Das verlinkt `commands/dialog-start.md` nach `~/.claude/commands/`. Achtung: `add-skill.ps1`
+legt zugleich einen gleichnamigen Antigravity-Skill an und würde einen dort bereits von Hand
+geschriebenen überschreiben — in diesem Fall nur den Claude-Link anlegen. Ein neuer Command
+wirkt erst nach einem Neustart von Claude Code.
 
 ### Antigravity
 
