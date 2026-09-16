@@ -7,6 +7,22 @@ Starte einen Agent-Dialog über den MCP-Server `aos-dialog`. Kein Terminal für 
 
 Argumente: $ARGUMENTS — erwartet `<thema> | <partner> | <slug>`, mit Pipe getrennt. Nur das Thema ist Pflicht.
 
+## 0. Plausibilität der Argumente
+
+Die Reihenfolge wird erfahrungsgemäß verwechselt. Prüfe deshalb **vor** allem anderen, was du
+tatsächlich bekommen hast:
+
+- Ein **Thema** ist ein Satz: Leerzeichen, meist ein Fragezeichen, gemischte Groß-/Kleinschreibung.
+- Ein **Slug** ist eine Kurzkennung: keine Leerzeichen, nur Kleinbuchstaben, Ziffern, Bindestriche.
+- Ein **Partner** ist genau `goose` oder `antigravity`.
+
+Passt ein Wert offensichtlich zu einem anderen Feld, ordne ihn dort ein und **sage im Chat
+deutlich, dass du die Argumente umsortiert hast**. Ist gar keine Frage dabei, FRAGE nach dem
+Thema und lege nichts an, bevor du eine Antwort hast.
+
+**Leg niemals einen Dialog an, dessen Thema keine Frage ist.** Ein Dialog mit einem Slug als
+Thema ist inhaltlich wertlos, und der Slug ist danach belegt.
+
 ## 1. Argumente prüfen und den Slug festlegen
 
 - **Thema:** eine vollständige Frage, keine Überschrift. Je enger und prüfbarer, desto brauchbarer der Dialog. Fehlt es, FRAGE im Chat nach — rate nicht.
@@ -20,7 +36,7 @@ Beispiel: „Sind die Ziele des AOS angemessen?" → `aos-ziele-angemessen`.
 **Leg den Slug einmal fest und verwende danach ausnahmslos diesen einen Wert** — in
 `dialog_open`, in `dialog_probe` und in der Kommandozeile des Loops. Weicht er zwischen Server
 und Skript ab, sucht das Skript eine Datei, die es nicht gibt, sieht `state: absent` und
-eröffnet einen **zweiten** Dialog. Nenne den festgelegten Slug im Chat.
+eröffnet einen **zweiten** Dialog. Nenne **Thema und Slug** im Chat, damit eine Verwechslung sofort auffällt.
 
 ## 2. Selbst nachsehen, bevor du sondierst
 

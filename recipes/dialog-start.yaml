@@ -6,17 +6,17 @@ parameters:
   - key: topic
     input_type: string
     requirement: required
-    description: Die vollstaendige Fragestellung. Eine Frage, keine Ueberschrift - je enger und pruefbarer, desto brauchbarer der Dialog.
+    description: "FRAGE (Pflicht): Die vollstaendige Fragestellung als Satz mit Fragezeichen, z. B. 'Sind die Ziele des AOS ausreichend und angemessen?'. Hier KEINE Kurzkennung eintragen - dafuer ist das Feld slug da."
   - key: slug
     input_type: string
     requirement: optional
     default: ""
-    description: Optionale Kennung des Dialogs. Leer lassen - dann wird sie aus dem Thema abgeleitet. Erlaubt sind nur Kleinbuchstaben, Ziffern und Bindestriche.
+    description: "KENNUNG (optional, leer lassen empfohlen): Kurzname des Dialogs, nur Kleinbuchstaben, Ziffern, Bindestriche, z. B. 'aos-ziele-teil2'. Leer = wird aus der Frage abgeleitet. Hier KEINEN Satz eintragen."
   - key: partner
     input_type: string
     requirement: optional
     default: claude
-    description: Der zweite Debattant - claude oder antigravity.
+    description: "PARTNER (optional): Der zweite Debattant - 'claude' oder 'antigravity'."
 
 instructions: |
   Du bist Goose und traegst im Dialog die Kennung `goose`. Sie steht im Start des
@@ -33,14 +33,34 @@ instructions: |
   dialog_open, im dialog_probe und in der Kommandozeile. Weichen sie voneinander ab,
   sucht das Skript eine Datei, die es nicht gibt, und eroeffnet einen zweiten Dialog.
 
-prompt: |
-  Eroeffne einen Agent-Dialog zum Thema "{{ topic }}". Partner ist "{{ partner }}".
+  WICHTIG - vertauschte Felder: Die Felder topic und slug werden erfahrungsgemaess
+  verwechselt. Ein Thema ist ein Satz, ein Slug eine Kurzkennung. Pruefe das, bevor du
+  irgendetwas anlegst - ein Dialog mit einem Slug als Thema ist inhaltlich wertlos, und
+  der Slug ist danach belegt.
 
-  1. SLUG FESTLEGEN. Ist "{{ slug }}" nicht leer, pruefe ihn; sonst leite ihn aus dem Thema ab.
-     Regel: Kleinbuchstaben, Ziffern, Bindestriche - sonst nichts. Umlaute umschreiben
-     (ae oe ue ss), Leerzeichen zu Bindestrichen, alles andere entfernen, hoechstens
-     etwa 40 Zeichen. Beispiel: "Sind die Ziele des AOS angemessen?" -> "aos-ziele-angemessen".
-     Nenne den festgelegten Slug im Chat und verwende ab hier NUR noch diesen Wert.
+prompt: |
+  Eroeffne einen Agent-Dialog. Uebergeben wurden:
+    topic   = "{{ topic }}"
+    slug    = "{{ slug }}"
+    partner = "{{ partner }}"
+
+  0. PLAUSIBILITAET DER FELDER. Bevor du irgendetwas anlegst:
+     - Ein THEMA ist ein Satz: enthaelt Leerzeichen, meist ein Fragezeichen, Gross- und
+       Kleinschreibung gemischt.
+     - Ein SLUG ist eine Kurzkennung: keine Leerzeichen, nur Kleinbuchstaben, Ziffern und
+       Bindestriche.
+     Sieht topic wie ein Slug aus UND slug wie ein Satz, sind die Felder vertauscht.
+     Dann TAUSCHE sie und sage im Chat deutlich, dass du das getan hast.
+     Sieht topic wie ein Slug aus und slug ist leer, fehlt die eigentliche Frage:
+     FRAGE im Chat nach dem Thema und lege nichts an, bevor du eine Antwort hast.
+     Leg niemals einen Dialog an, dessen Thema keine Frage ist.
+
+  1. SLUG FESTLEGEN. Ist nach Schritt 0 ein Slug vorhanden, pruefe ihn; sonst leite ihn aus
+     dem Thema ab. Regel: Kleinbuchstaben, Ziffern, Bindestriche - sonst nichts. Umlaute
+     umschreiben (ae oe ue ss), Leerzeichen zu Bindestrichen, alles andere entfernen,
+     hoechstens etwa 40 Zeichen. Beispiel: "Sind die Ziele des AOS angemessen?" ->
+     "aos-ziele-angemessen". Nenne den festgelegten Slug im Chat und verwende ab hier NUR
+     noch diesen Wert.
 
   2. AOS-WURZEL BESTIMMEN. Suche `dialog-loop.ps1` auf der Platte; das Elternverzeichnis
      von `scripts\` ist die AOS-Wurzel. Merke dir den vollstaendigen Pfad zum Skript.
@@ -48,7 +68,7 @@ prompt: |
   3. DATEIEN ANSEHEN. Oeffne die Dateien, um die es im Thema geht, und lies die relevanten
      Zeilen. Ohne Dateikontakt zieht deine Sonde nur dein Vorwissen.
 
-  4. dialog_open(slug=<festgelegter-slug>, topic="{{ topic }}", partner="{{ partner }}", max_rounds=3)
+  4. dialog_open(slug=<festgelegter-slug>, topic=<geprueftes-thema>, partner="{{ partner }}", max_rounds=3)
      Existiert der Slug bereits: nicht ueberschreiben. Mit dialog_read den Stand lesen,
      im Chat melden und fragen, ob fortgesetzt oder ein neuer Slug gewaehlt wird.
 
@@ -64,7 +84,8 @@ prompt: |
      ist aber Pflicht. -Initiator ist der Partner, nicht du: du hast bereits sondiert.
      Bestaetige im Chat, dass du den Befehl abgesetzt hast, und nenne ihn woertlich.
 
-  7. MELDEN. Pfad zum Mitlesen (<aos-wurzel>\dialoge\<festgelegter-slug>.html, Auto-Refresh
+  7. MELDEN. Das verwendete Thema und den Slug (damit eine Verwechslung sofort auffaellt),
+     den Pfad zum Mitlesen (<aos-wurzel>\dialoge\<festgelegter-slug>.html, Auto-Refresh
      alle 5 Sekunden), dass der Loop im Hintergrund laeuft - und dass deine spaeteren Zuege
      von einer headless gestarteten Zweitinstanz uebernommen werden, nicht von dieser
      Sitzung. Ist der Partner "antigravity", sage zusaetzlich: der Loop haelt an, sobald
