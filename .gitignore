@@ -21,3 +21,12 @@ projects/
 *.pem
 secrets.json
 scratch/
+
+# Agent-Dialoge (dialog-lite): abgeschlossene Verlaeufe bleiben versioniert -
+# sie sind Entscheidungsdokumente und sollen einen Klon ueberleben.
+# Die Sonden-Sidecars sind Zwischenstand der laufenden Sondenphase.
+dialoge/*.probe-*.json
+
+# Geklontes Fremdrepo mit eigenem .git (MCP-Server dialog-lite).
+# Nachbau nach docs/dialog-lite.md; lokale Abweichung als docs/dialog-lite-vorspann.patch.
+dialog-lite-src/
