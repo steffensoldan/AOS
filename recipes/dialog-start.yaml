@@ -1,0 +1,55 @@
+version: 1.0.0
+title: AOS Dialog starten
+description: Eroeffnet einen Agent-Dialog ueber den MCP-Server aos-dialog, reicht die eigene Sonde ein und uebergibt den Rest an dialog-loop.ps1.
+
+parameters:
+  - key: slug
+    input_type: string
+    requirement: required
+    description: Kennung des Dialogs - nur Kleinbuchstaben, Ziffern, Bindestriche. Wird Dateiname unter dialoge\.
+  - key: topic
+    input_type: string
+    requirement: required
+    description: Die vollstaendige Fragestellung. Eine Frage, keine Ueberschrift - je enger und pruefbarer, desto brauchbarer der Dialog.
+  - key: partner
+    input_type: string
+    requirement: optional
+    default: claude
+    description: Der zweite Debattant - claude oder antigravity.
+
+instructions: |
+  Du bist Goose und traegst im Dialog die Kennung `goose`. Sie steht im Start des
+  MCP-Servers aos-dialog und wird bei keinem Aufruf als Argument uebergeben.
+
+  Der Benutzer soll fuer diesen Ablauf kein Terminal oeffnen muessen. Erledige alles selbst.
+
+  Eine Sonde ist ein Artefakt, keine Prosa: Datei und Zeile, ein Testfall, eine konkrete
+  Entscheidung, eine Zahl. Richtwert hoechstens zehn Zeilen. Du reichst blind ein - die
+  Sonde des anderen siehst du erst, wenn beide vorliegen.
+
+prompt: |
+  Eroeffne einen Agent-Dialog zum Thema "{{ topic }}" unter dem Slug "{{ slug }}",
+  Partner ist "{{ partner }}".
+
+  1. Sieh dir die Dateien an, um die es im Thema geht - oeffne sie und lies die
+     relevanten Zeilen. Ohne Dateikontakt zieht deine Sonde nur dein Vorwissen.
+
+  2. dialog_open(slug="{{ slug }}", topic="{{ topic }}", partner="{{ partner }}", max_rounds=3)
+     Existiert der Slug bereits: nicht ueberschreiben. Mit dialog_read den Stand lesen,
+     im Chat melden und fragen, ob fortgesetzt oder ein neuer Slug gewaehlt wird.
+
+  3. dialog_probe(slug="{{ slug }}", artifact=...) - dein Artefakt, Datei und Zeile.
+
+  4. Starte im Hintergrund, damit der Chat bedienbar bleibt:
+     powershell -ExecutionPolicy Bypass -File "<AOS_ROOT>\scripts\dialog-loop.ps1" -Slug "{{ slug }}" -Topic "resume" -Initiator "{{ partner }}" -Partner "goose" -Rounds 3
+     -Topic "resume" ist ein Platzhalter; das Thema steht bereits im Dialog, der Parameter
+     ist aber Pflicht. -Initiator ist der Partner, nicht du: du hast bereits sondiert.
+     <AOS_ROOT> aus dem Skriptpfad ableiten, nicht hart kodieren.
+
+  5. Melde im Chat: den Pfad zum Mitlesen (dialoge\{{ slug }}.html, Auto-Refresh alle
+     5 Sekunden), dass der Loop im Hintergrund laeuft - und dass deine spaeteren Zuege
+     von einer headless gestarteten Zweitinstanz uebernommen werden, nicht von dieser
+     Sitzung. Ist der Partner "antigravity", sage zusaetzlich: der Loop haelt an, sobald
+     Antigravity am Zug ist, weil Antigravity keinen Headless-Start hat.
+
+  Gib kein Kommando aus, das der Benutzer selbst in eine Konsole tippen soll.
