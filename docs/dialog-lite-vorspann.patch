@@ -1,0 +1,188 @@
+From 0d4e376337c8c54ae1d671dc68eb27a962f16479 Mon Sep 17 00:00:00 2001
+From: Schmuck-Soldan <Steffen.Schmuck-Soldan@zew.de>
+Date: Wed, 16 Sep 2026 16:47:07 +0200
+Subject: [PATCH] render: Verfahrens-Vorspann in der HTML-Seite
+
+Die HTML-Datei ist zugleich Liveticker und Abschlussdokument, erklaerte
+das Verfahren aber nirgends. Wer sie spaeter oeffnet, sieht Sonden und
+Einwaende, ohne die Regel zu kennen, nach der sie entstanden sind.
+
+Neu ist ein zugeklappter <details>-Block zwischen Metazeile und
+Sondenphase: vier Schritte mit den zustaendigen Werkzeugen, die aktuelle
+Phase hervorgehoben, darunter die drei Regeln, die der Server erzwingt.
+
+Der Verfahrenstext stand bisher als INSTRUCTIONS in server.py. Er liegt
+jetzt als PROCEDURE_STEPS/PROCEDURE_RULES in render.py, und server.py
+baut seine INSTRUCTIONS daraus auf - eine Fassung statt zweier, die
+auseinanderlaufen koennen. Der Import server -> render erzeugt keinen
+Zyklus, da thread.py render bereits verzoegert in save() importiert.
+
+Alle Farben laufen ueber die bestehenden CSS-Tokens, Dark Mode traegt
+damit unveraendert.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+---
+ dialog-lite/src/dialog_lite/render.py | 80 +++++++++++++++++++++++++++
+ dialog-lite/src/dialog_lite/server.py | 28 ++++++----
+ 2 files changed, 97 insertions(+), 11 deletions(-)
+
+diff --git a/dialog-lite/src/dialog_lite/render.py b/dialog-lite/src/dialog_lite/render.py
+index 5781ff7..a83e28f 100644
+--- a/dialog-lite/src/dialog_lite/render.py
++++ b/dialog-lite/src/dialog_lite/render.py
+@@ -14,6 +14,51 @@ from .thread import DATA_CLOSE, DATA_OPEN, encode_data
+ 
+ REFRESH_SECONDS = 5
+ 
++# Das Verfahren steht genau einmal im Code. `server.py` baut daraus seine
++# INSTRUCTIONS fuer die Agenten, `render()` den Vorspann der HTML-Seite.
++# Zwei Fassungen waeren zwei Wahrheiten, die auseinanderlaufen.
++# Je Eintrag: Zustand im Thread, Ueberschrift, zustaendige Werkzeuge, Beschreibung.
++PROCEDURE_STEPS = (
++    (
++        "probing",
++        "Sondenphase",
++        "dialog_open, dialog_probe",
++        "Beide reichen blind ihre Erstloesung ein - ein Artefakt, keine Prosa: Datei und "
++        "Zeile, ein Testfall, eine konkrete Entscheidung, eine Zahl. Fremde Sonden bleiben "
++        "verdeckt, bis alle vorliegen.",
++    ),
++    (
++        "probe_review",
++        "Bewertung der Sonden",
++        "dialog_probe_resolve",
++        "Stimmen die Artefakte ueberein, ist die Debatte unnoetig und der Dialog endet hier. "
++        "Weichen sie ab, wird debattiert - und die Differenz der Sonden ist die Tagesordnung "
++        "der ersten Runde.",
++    ),
++    (
++        "debating",
++        "Debatte",
++        "dialog_post",
++        "Beitraege im Wechsel, Runde fuer Runde. Nach dem zweiten Sprecher einer Runde zaehlt "
++        "der Rundenzaehler hoch.",
++    ),
++    (
++        "done",
++        "Abschluss",
++        "dialog_close",
++        "Ein Ergebnis in eigenen Worten. Danach ist der Dialog terminal: diese Seite laedt "
++        "sich nicht mehr nach und ist das Abschlussdokument.",
++    ),
++)
++
++# Was der Server erzwingt - nicht Stilempfehlung, sondern abgewiesene Aufrufe.
++PROCEDURE_RULES = (
++    "Nur wer am Zug ist, schreibt.",
++    "Kein leerer Beitrag.",
++    "Jeder Einwand nennt seine Ruecknahmebedingung - \u201eIch ziehe das zurueck, wenn ___\u201c. "
++    "Wer die nicht angeben kann, hat keinen Einwand, sondern ein Stilmittel.",
++)
++
+ STYLE = """
+ :root {
+   --paper:#f3f3f0; --card:#fff; --ink:#191b20; --muted:#636872; --rule:#dad9d2;
+@@ -48,6 +93,15 @@ code { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.88em; }
+ .artifact { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.9rem; white-space:pre-wrap;
+             background:var(--paper); border:1px solid var(--rule); padding:10px 12px; margin:8px 0 0; }
+ .turn { font-weight:700; }
++.procedure { border:1px solid var(--rule); background:var(--card); padding:10px 14px; margin:14px 0 8px; }
++.procedure > summary { cursor:pointer; color:var(--muted); font-size:.92rem; }
++.procedure > summary:hover { color:var(--ink); }
++.procedure ol { margin:14px 0 0; padding-left:22px; }
++.procedure ul { margin:6px 0 0; padding-left:22px; }
++.procedure li { margin:0 0 10px; font-size:.94rem; }
++.procedure .tools { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.82rem; color:var(--muted); }
++.procedure .now { color:var(--accent); }
++.procedure .now .here { font-size:.78rem; text-transform:uppercase; letter-spacing:.07em; }
+ footer { max-width:820px; margin:0 auto; padding:16px 20px 48px; border-top:1px solid var(--rule);
+          color:var(--muted); font-size:.8rem; }
+ """
+@@ -111,6 +165,31 @@ def _probes_html(data: dict[str, Any]) -> str:
+     return "\n".join(parts)
+ 
+ 
++def _procedure_html(state: str) -> str:
++    """Vorspann: erklaert das Verfahren und markiert, wo der Dialog gerade steht.
++
++    Im Zustand `done` ist die Markierung eine Rueckschau, keine Anleitung - die
++    Seite ist dann ein Dokument und niemand handelt mehr danach.
++    """
++    items = []
++    for key, title, tools, text in PROCEDURE_STEPS:
++        here = ' <span class="here">&larr; hier</span>' if key == state else ""
++        cls = ' class="now"' if key == state else ""
++        items.append(
++            f"<li{cls}><b>{escape(title)}</b>{here} "
++            f'<span class="tools">{escape(tools)}</span><br>{escape(text)}</li>'
++        )
++    rules = "".join(f"<li>{escape(rule)}</li>" for rule in PROCEDURE_RULES)
++    return (
++        '<details class="procedure">'
++        "<summary>Wie dieser Dialog funktioniert</summary>"
++        f'<ol>{"".join(items)}</ol>'
++        '<p class="meta">Drei Regeln weist der Server ab, statt sie nur zu empfehlen:</p>'
++        f"<ul>{rules}</ul>"
++        "</details>"
++    )
++
++
+ def render(data: dict[str, Any]) -> str:
+     done = data["state"] == "done"
+     refresh = "" if done else f'\n  <meta http-equiv="refresh" content="{REFRESH_SECONDS}">'
+@@ -129,6 +208,7 @@ def render(data: dict[str, Any]) -> str:
+         f'Runde {data["round"]}/{data["max_rounds"]} · '
+         f'{escape(" gegen ".join(data["participants"]))}</p>',
+         f'<p class="meta">{standline} · Stand {escape(_stamp(data["updated"]))}</p>',
++        _procedure_html(data["state"]),
+         _probes_html(data),
+     ]
+ 
+diff --git a/dialog-lite/src/dialog_lite/server.py b/dialog-lite/src/dialog_lite/server.py
+index 810110c..50eb00d 100644
+--- a/dialog-lite/src/dialog_lite/server.py
++++ b/dialog-lite/src/dialog_lite/server.py
+@@ -13,23 +13,29 @@ from mcp.server.mcpserver import MCPServer
+ from mcp.server.mcpserver.exceptions import ToolError
+ 
+ from . import thread
++from .render import PROCEDURE_RULES, PROCEDURE_STEPS
+ from .thread import DialogError
+ 
+-INSTRUCTIONS = """\
+-Dialog mit einem zweiten Agenten, in einer HTML-Datei je Thema.
+ 
+-Ablauf: dialog_open -> beide reichen blind dialog_probe ein -> dialog_probe_resolve
+-entscheidet, ob ueberhaupt debattiert wird -> dialog_post im Wechsel -> dialog_close.
++def _instructions() -> str:
++    """Anleitung fuer die Agenten - aus derselben Quelle wie der HTML-Vorspann.
+ 
+-Drei Regeln setzt der Server durch: nur wer am Zug ist schreibt, kein leerer Beitrag,
+-und jeder Einwand braucht seine Ruecknahmebedingung ("Ich ziehe das zurueck, wenn ___").
+-Wer die nicht angeben kann, hat keinen Einwand, sondern ein Stilmittel.
++    `render.PROCEDURE_STEPS` ist die einzige Fassung des Verfahrens im Code.
++    """
++    steps = "\n".join(
++        f"{i}. {title} ({tools}): {text}"
++        for i, (_state, title, tools, text) in enumerate(PROCEDURE_STEPS, 1)
++    )
++    rules = "\n".join(f"- {rule}" for rule in PROCEDURE_RULES)
++    return (
++        "Dialog mit einem zweiten Agenten, in einer HTML-Datei je Thema.\n\n"
++        f"Ablauf:\n{steps}\n\n"
++        f"Diese Regeln setzt der Server durch:\n{rules}\n\n"
++        "Wer du bist, steht im Start des Servers - du gibst es bei keinem Aufruf an.\n"
++    )
+ 
+-Die Sonde ist ein Artefakt, keine Prosa: Datei und Zeile, ein Testfall, eine konkrete
+-Entscheidung, eine Zahl. Fremde Sonden bleiben verdeckt, bis alle vorliegen.
+ 
+-Wer du bist, steht im Start des Servers - du gibst es bei keinem Aufruf an.
+-"""
++INSTRUCTIONS = _instructions()
+ 
+ 
+ def build_server(directory: str, me: str) -> MCPServer:
+-- 
+2.55.0.windows.5
+

@@ -1,5 +1,17 @@
 # AOS Agent-Dialog
 
+> [!NOTE]
+> **Abgeloest, aber noch aktiv als Rueckfallweg.**
+> Dieses dateibasierte Protokoll ist durch den MCP-Server `dialog-lite` ersetzt, der
+> Sondenphase, Zugrecht und Ruecknahmebedingung serverseitig erzwingt, statt sie nur zu
+> vereinbaren. Dokumentation: [`docs/dialog-lite.md`](../docs/dialog-lite.md),
+> [`docs/dialog-start.md`](../docs/dialog-start.md), [`docs/dialog-loop.md`](../docs/dialog-loop.md).
+>
+> Fuer **neue** Dialoge den MCP-Weg nutzen. Dieses Verzeichnis bleibt bestehen, solange
+> `dialog-lite` keinen vollautomatischen Durchlauf nachgewiesen hat, und bewahrt 15
+> abgeschlossene Threads. Der Befehl `/dialog-reply` und der gleichnamige
+> Antigravity-Skill bedienen weiterhin nur dieses Protokoll.
+
 Asynchroner Kommunikationskanal zwischen Claude Code (CC) und Antigravity (AG).
 Ermöglicht strukturierte Diskussionen zwischen den Agents — mit oder ohne User.
 
@@ -157,3 +169,4 @@ Sobald der Benutzer Antigravity bittet, nach offenen Dialogen zu suchen, liest A
 | `stufe-2-konzept` | 1 | offen | CC stellt Fragen zu AG-Loop-Mechanismus |
 | `uaos-overhead-check` | 3 | done | Lightweight-Modus beschlossen, git-init angepasst |
 | `aos-optimierung` | 3 | done | 5 Nachbesserungen vereinbart (Symlink-Default, Fail-Fast-Prüfung, Allowlist-ZIP-Export) |
+| `ki-datenklassen` | 3 | done | Analyse KI-Datenklassen-Tabelle ZEW: 1 Hard-Blocker (Art.9→US), 1 Verbot (Art.5 AI Act), ~12 heilbare Verstöße, 4 offene Verifikationspunkte |
