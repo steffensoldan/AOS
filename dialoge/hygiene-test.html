@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Soll dialog/ weiterhin per .gitignore ausgeschlossen bleiben oder getrackt werden? — Agent-Dialog</title>
+  <script type="application/json" id="dialog-data">
+{
+ "slug": "hygiene-test",
+ "topic": "Soll dialog/ weiterhin per .gitignore ausgeschlossen bleiben oder getrackt werden?",
+ "participants": [
+  "goose",
+  "claude"
+ ],
+ "state": "done",
+ "turn": null,
+ "round": 1,
+ "max_rounds": 2,
+ "revision": 5,
+ "created": "2026-09-15T16:47:43+02:00",
+ "updated": "2026-09-15T17:04:29+02:00",
+ "probes": [
+  {
+   "who": "goose",
+   "artifact": ".gitignore:2-5\ndialog/*\n!dialog/README.md\n!dialog/uaos-overhead-check/\n!dialog/aos-optimierung/\n\ndialog/README.md:12-17\ndialog/\u003cthema>/\n├── status.md        ← Steuerungsdatei\n├── from-claude.md   ← CC schreibt hier\n└── from-ag.md       ← AG schreibt hier",
+   "at": "2026-09-15T16:48:11+02:00"
+  },
+  {
+   "who": "claude",
+   "artifact": ".gitignore Z.1-5: `dialog/*` ignoriert, mit Ausnahmen `!dialog/README.md`, `!dialog/uaos-overhead-check/`, `!dialog/aos-optimierung/`. `git ls-files dialog` bestaetigt: genau diese 4 Dateien sind getrackt, Rest ignoriert. dialog/ ist also nicht komplett ausgeschlossen, sondern per Allowlist selektiv getrackt - Muster funktioniert wie konfiguriert. Empfehlung: Allowlist-Pattern beibehalten (README + entschiedene/dokumentierte Threads tracken, laufende Rohdaten ignorieren). Separater Befund: neuer Ordner dialoge/ (Plural, MCP-Server-Ablage fuer hygiene-test.html etc.) ist komplett untracked und von .gitignore gar nicht erfasst - das ist die eigentliche offene Luecke, nicht dialog/ selbst.",
+   "at": "2026-09-15T17:01:28+02:00"
+  }
+ ],
+ "probes_pending": [],
+ "probe_outcome": {
+  "outcome": "diverged",
+  "rationale": "Kernfakt deckungsgleich: beide Sonden zitieren .gitignore Z.2-5 identisch (dialog/* ignoriert, 3 Ausnahmen) - verifiziert per git ls-files (4 getrackte Dateien). Divergenz im Skopus: goose zitiert dialog/README.md:12-17, das Protokoll fuer den ALTEN dateibasierten Mechanismus (dialog/\u003cthema>/status.md, from-claude.md, from-ag.md) - verifiziert, Zitat korrekt. Ich habe zusaetzlich geprueft, dass DIESER Dialog (hygiene-test) tatsaechlich gar nicht in dialog/ liegt, sondern im neuen Ordner dialoge/ (Plural, MCP-Server-Ablage: hygiene-test.html, hygiene-test.probe-*.json) - und dieser Ordner ist von .gitignore ueberhaupt nicht erfasst, komplett untracked. Das README beschreibt also einen Mechanismus, der fuer die aktuelle Session gar nicht greift. Offene Frage fuer Runde 1: bezieht sich die Topic-Frage auf dialog/ (Legacy, bereits sauber per Allowlist geloest) oder auf dialoge/ (Live-System, aktuell ungeregelt)? Das ist der eigentliche Entscheidungsbedarf.",
+  "by": "claude",
+  "at": "2026-09-15T17:02:03+02:00"
+ },
+ "posts": [],
+ "result": {
+  "summary": "Ergebnis nach eigener Plattenpruefung aller Tatsachenbehauptungen.\n\n## Geprueft und verifiziert (jeder Punkt auf Platte nachgemessen):\n\n1. .gitignore Z.1-5 exakt wie von Claude zitiert: Z.2 \"dialog/*\", Z.3 \"!dialog/README.md\", Z.4 \"!dialog/uaos-overhead-check/\", Z.5 \"!dialog/aos-optimierung/\" — per \"type .gitignore\" gelesen.\n\n2. \"git ls-files dialog\" liefert genau 4 Dateien: dialog/README.md, dialog/aos-optimierung/from-ag.md, from-claude.md, status.md — verifiziert.\n\n3. \"git check-ignore -v dialog/test-untracked.md\" → \".gitignore:2:dialog/*\" → dialog/ Dateien ausserhalb der Allowlist werden ignoriert. Allowlist-Pattern funktioniert wie konfiguriert. — verifiziert.\n\n4. dialoge/ (Plural) existiert, enthaelt: aos-funktionalitaet.html, hygiene-test.html, themen-slug.html, themen-slug.probe-goose.json — per \"dir /b dialoge\" gelesen.\n\n5. \"git status --porcelain dialoge\" → \"?? dialoge/\" → komplett untracked. \"git ls-files dialoge\" → leer. — verifiziert.\n\n6. \"git check-ignore -v dialoge/hygiene-test.html\" → keine Ausgabe → dialoge/ wird von KEINEM .gitignore-Pattern erfasst. \"findstr /i /n dialoge .gitignore\" → leer. — verifiziert.\n\n7. dialog/README.md beschreibt den ALTEN dateibasierten Mechanismus (dialog/\u003cthema>/status.md, from-claude.md, from-ag.md). Dieser greift fuer die aktuelle MCP-basierte Session nicht. — verifiziert.\n\n## Nicht pruefbar:\n- Ob anderer Code (Skills, Skripte) Annahmen ueber den Tracking-Status von dialoge/ trifft — nicht im Scope dieser Pruefung.\n\n## Einverstaendnis mit Claudes Sonde:\nClaudes Befund ist in allen Punkten korrekt. Keine einzige Tatsachenbehauptung konnte widerlegt werden. Die Divergenz der Sonden war rein skopisch (ich fokussierte auf dialog/README.md Legacy-Mechanismus, Claude identifizierte zusaetzlich dialoge/ als Live-System).\n\n## Entscheidung:\n1. dialog/ → Allowlist-Pattern beibehalten. Die Frage der Topic ist bereits korrekt geloest: dialog/ ist nicht \"ausgeschlossen\", sondern selektiv getrackt (README + entschiedene Threads). Keine Aenderung noetig.\n2. dialoge/ (Plural) → zur .gitignore hinzufuegen. Enthaelt transiente MCP-Server-Artefakte (HTML-Viewer + probe-JSON, ~73 KB gesamt), die nicht versioniert werden muessen. Empfehlung: \"dialoge/\" als neue Zeile in .gitignore aufnehmen.",
+  "by": "goose",
+  "at": "2026-09-15T17:04:29+02:00"
+ }
+}
+  </script>
+  <style>
+:root {
+  --paper:#f3f3f0; --card:#fff; --ink:#191b20; --muted:#636872; --rule:#dad9d2;
+  --accent:#1f5aa6; --ok:#2c6e52; --warn:#8a6410;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --paper:#14161a; --card:#1c1f25; --ink:#e7e7e2; --muted:#949aa4; --rule:#333844;
+          --accent:#7faadf; --ok:#7fc5a2; --warn:#d9b663; }
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); line-height:1.55;
+       font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+main { max-width:820px; margin:0 auto; padding:32px 20px 72px; }
+h1 { font-size:1.65rem; line-height:1.2; margin:0 0 10px; }
+h2 { font-size:1.05rem; margin:32px 0 12px; }
+h3 { font-size:.95rem; margin:0 0 6px; }
+code { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.88em; }
+.meta { color:var(--muted); font-size:.92rem; margin:0 0 4px; }
+.pill { display:inline-block; font-size:.72rem; text-transform:uppercase; letter-spacing:.07em;
+        border:1px solid var(--rule); padding:2px 8px; }
+.pill.probing { color:var(--warn); } .pill.probe_review { color:var(--accent); }
+.pill.debating { color:var(--ink); } .pill.done { color:var(--ok); }
+.card { background:var(--card); border:1px solid var(--rule); padding:18px 20px; margin:0 0 16px; }
+.post .who { font-weight:700; }
+.post .stamp { color:var(--muted); font-size:.85rem; font-weight:400; }
+.body { white-space:pre-wrap; margin:10px 0 0; }
+.obj { border-left:2px solid var(--accent); padding-left:14px; margin:14px 0 0; }
+.obj .claim { font-weight:600; }
+.retract { color:var(--accent); font-size:.92rem; }
+.result { border:1px solid var(--accent); background:var(--card); padding:18px 20px; margin:24px 0 0; }
+.hidden-note { color:var(--muted); font-style:italic; }
+.artifact { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.9rem; white-space:pre-wrap;
+            background:var(--paper); border:1px solid var(--rule); padding:10px 12px; margin:8px 0 0; }
+.turn { font-weight:700; }
+footer { max-width:820px; margin:0 auto; padding:16px 20px 48px; border-top:1px solid var(--rule);
+         color:var(--muted); font-size:.8rem; }
+</style>
+</head>
+<body>
+<main>
+<h1>Soll dialog/ weiterhin per .gitignore ausgeschlossen bleiben oder getrackt werden?</h1>
+<p class="meta"><code>hygiene-test</code> · <span class="pill done">done</span> · Runde 1/2 · goose gegen claude</p>
+<p class="meta">Abgeschlossen · Stand 2026-09-15 17:04</p>
+<h2>Sondenphase</h2>
+<div class="card"><h3>goose <span class="stamp">2026-09-15 16:48</span></h3><div class="artifact">.gitignore:2-5
+dialog/*
+!dialog/README.md
+!dialog/uaos-overhead-check/
+!dialog/aos-optimierung/
+
+dialog/README.md:12-17
+dialog/&lt;thema&gt;/
+├── status.md        ← Steuerungsdatei
+├── from-claude.md   ← CC schreibt hier
+└── from-ag.md       ← AG schreibt hier</div></div>
+<div class="card"><h3>claude <span class="stamp">2026-09-15 17:01</span></h3><div class="artifact">.gitignore Z.1-5: `dialog/*` ignoriert, mit Ausnahmen `!dialog/README.md`, `!dialog/uaos-overhead-check/`, `!dialog/aos-optimierung/`. `git ls-files dialog` bestaetigt: genau diese 4 Dateien sind getrackt, Rest ignoriert. dialog/ ist also nicht komplett ausgeschlossen, sondern per Allowlist selektiv getrackt - Muster funktioniert wie konfiguriert. Empfehlung: Allowlist-Pattern beibehalten (README + entschiedene/dokumentierte Threads tracken, laufende Rohdaten ignorieren). Separater Befund: neuer Ordner dialoge/ (Plural, MCP-Server-Ablage fuer hygiene-test.html etc.) ist komplett untracked und von .gitignore gar nicht erfasst - das ist die eigentliche offene Luecke, nicht dialog/ selbst.</div></div>
+<div class="card"><h3>Divergent — Debatte eröffnet</h3><div class="body">Kernfakt deckungsgleich: beide Sonden zitieren .gitignore Z.2-5 identisch (dialog/* ignoriert, 3 Ausnahmen) - verifiziert per git ls-files (4 getrackte Dateien). Divergenz im Skopus: goose zitiert dialog/README.md:12-17, das Protokoll fuer den ALTEN dateibasierten Mechanismus (dialog/&lt;thema&gt;/status.md, from-claude.md, from-ag.md) - verifiziert, Zitat korrekt. Ich habe zusaetzlich geprueft, dass DIESER Dialog (hygiene-test) tatsaechlich gar nicht in dialog/ liegt, sondern im neuen Ordner dialoge/ (Plural, MCP-Server-Ablage: hygiene-test.html, hygiene-test.probe-*.json) - und dieser Ordner ist von .gitignore ueberhaupt nicht erfasst, komplett untracked. Das README beschreibt also einen Mechanismus, der fuer die aktuelle Session gar nicht greift. Offene Frage fuer Runde 1: bezieht sich die Topic-Frage auf dialog/ (Legacy, bereits sauber per Allowlist geloest) oder auf dialoge/ (Live-System, aktuell ungeregelt)? Das ist der eigentliche Entscheidungsbedarf.</div><p class="meta">bewertet von claude · 2026-09-15 17:02</p></div>
+<div class="result"><h2 style="margin-top:0">Ergebnis</h2><div class="body">Ergebnis nach eigener Plattenpruefung aller Tatsachenbehauptungen.
+
+## Geprueft und verifiziert (jeder Punkt auf Platte nachgemessen):
+
+1. .gitignore Z.1-5 exakt wie von Claude zitiert: Z.2 &quot;dialog/*&quot;, Z.3 &quot;!dialog/README.md&quot;, Z.4 &quot;!dialog/uaos-overhead-check/&quot;, Z.5 &quot;!dialog/aos-optimierung/&quot; — per &quot;type .gitignore&quot; gelesen.
+
+2. &quot;git ls-files dialog&quot; liefert genau 4 Dateien: dialog/README.md, dialog/aos-optimierung/from-ag.md, from-claude.md, status.md — verifiziert.
+
+3. &quot;git check-ignore -v dialog/test-untracked.md&quot; → &quot;.gitignore:2:dialog/*&quot; → dialog/ Dateien ausserhalb der Allowlist werden ignoriert. Allowlist-Pattern funktioniert wie konfiguriert. — verifiziert.
+
+4. dialoge/ (Plural) existiert, enthaelt: aos-funktionalitaet.html, hygiene-test.html, themen-slug.html, themen-slug.probe-goose.json — per &quot;dir /b dialoge&quot; gelesen.
+
+5. &quot;git status --porcelain dialoge&quot; → &quot;?? dialoge/&quot; → komplett untracked. &quot;git ls-files dialoge&quot; → leer. — verifiziert.
+
+6. &quot;git check-ignore -v dialoge/hygiene-test.html&quot; → keine Ausgabe → dialoge/ wird von KEINEM .gitignore-Pattern erfasst. &quot;findstr /i /n dialoge .gitignore&quot; → leer. — verifiziert.
+
+7. dialog/README.md beschreibt den ALTEN dateibasierten Mechanismus (dialog/&lt;thema&gt;/status.md, from-claude.md, from-ag.md). Dieser greift fuer die aktuelle MCP-basierte Session nicht. — verifiziert.
+
+## Nicht pruefbar:
+- Ob anderer Code (Skills, Skripte) Annahmen ueber den Tracking-Status von dialoge/ trifft — nicht im Scope dieser Pruefung.
+
+## Einverstaendnis mit Claudes Sonde:
+Claudes Befund ist in allen Punkten korrekt. Keine einzige Tatsachenbehauptung konnte widerlegt werden. Die Divergenz der Sonden war rein skopisch (ich fokussierte auf dialog/README.md Legacy-Mechanismus, Claude identifizierte zusaetzlich dialoge/ als Live-System).
+
+## Entscheidung:
+1. dialog/ → Allowlist-Pattern beibehalten. Die Frage der Topic ist bereits korrekt geloest: dialog/ ist nicht &quot;ausgeschlossen&quot;, sondern selektiv getrackt (README + entschiedene Threads). Keine Aenderung noetig.
+2. dialoge/ (Plural) → zur .gitignore hinzufuegen. Enthaelt transiente MCP-Server-Artefakte (HTML-Viewer + probe-JSON, ~73 KB gesamt), die nicht versioniert werden muessen. Empfehlung: &quot;dialoge/&quot; als neue Zeile in .gitignore aufnehmen.</div><p class="meta">goose · 2026-09-15 17:04</p></div>
+</main>
+<footer>
+  Dialog abgeschlossen — die Seite lädt sich nicht mehr neu. Der vollständige Zustand liegt als JSON im Kopf dieser Datei —
+  sie ist zugleich Speicher, Mitleseansicht und Abschlussdokument.
+</footer>
+</body>
+</html>

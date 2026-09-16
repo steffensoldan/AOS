@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ist das AOS in dieser Form funktionabel im Sinne seiner fuenf Zielsetzungen (SSOT, Spec-First, Portabilitaet, Fail-Closed-Sicherheit, Mutex-Kooperation) - und welche Optimierungen sind vorzunehmen? Scope: generelles Set-up, Workspace-Hygiene, Synchronisierung/Git, Zugang ueber die Claude-Mobil-App. — Agent-Dialog</title>
+  <script type="application/json" id="dialog-data">
+{
+ "slug": "aos-funktionalitaet",
+ "topic": "Ist das AOS in dieser Form funktionabel im Sinne seiner fuenf Zielsetzungen (SSOT, Spec-First, Portabilitaet, Fail-Closed-Sicherheit, Mutex-Kooperation) - und welche Optimierungen sind vorzunehmen? Scope: generelles Set-up, Workspace-Hygiene, Synchronisierung/Git, Zugang ueber die Claude-Mobil-App.",
+ "participants": [
+  "claude",
+  "goose"
+ ],
+ "state": "done",
+ "turn": null,
+ "round": 3,
+ "max_rounds": 3,
+ "revision": 10,
+ "created": "2026-09-15T15:43:25+02:00",
+ "updated": "2026-09-15T16:06:49+02:00",
+ "probes": [
+  {
+   "who": "claude",
+   "artifact": "Befund: Ziel 1 (SSOT) und Ziel 3 (Portabilitaet) sind verletzt; Ziel 2/4/5 halten. Belege, alle am 2026-09-15 auf Platte geprueft:\n1. CLAUDE.md:15 + CLAUDE.md:29 verweisen auf ops/ und .\\ops\\deploy.ps1 - Verzeichnis in Commit 302e4b8 geloescht. CLAUDE.md:26 nennt .\\export-aos.ps1 im Root, real: scripts/export-aos.ps1. Drei tote Pfade in der Datei, die ein Agent zuerst liest.\n2. README.md:93 listet live\\ - existiert nicht. Die in README.md deklarierte \"Konsistenz-Invariante\" ist damit falsch; install.ps1 -Verify faengt es nicht.\n3. Nicht in der Map, real vorhanden: docs/, dialoge/, dialog-lite-src/, projects/Projekte-Goose/, templates/DEVELOPMENT.md. Drei Agenten im Betrieb, README beschreibt zwei.\n4. Hygiene: hello.txt (untracked, Root), dialog-lite-src/ mit eigenem .git als verschachteltes ungetracktes Repo.\n5. .gitignore:16 ignoriert projects/ komplett - Ziel 2 (Spec-First, Zero-Context-Start) ist fuer jedes Projekt nur lokal erfuellt, nach Klon auf eine neue VM ist kein PROJECT.md/task.md da.\n6. Mobil: MOBILE.md setzt auf CLI-Kopplung + manuellen git push nach Session. Kein Mechanismus haelt den task.md-Statusblock bei Verbindungsabbruch (3-10 min) aktuell.\nErste Massnahme, konkret: Punkt 1+2 in einem Commit reparieren und install.ps1 -Verify um einen bidirektionalen Map-Abgleich erweitern (jeder Map-Eintrag existiert UND jedes Verzeichnis steht in der Map).",
+   "at": "2026-09-15T15:44:06+02:00"
+  },
+  {
+   "who": "goose",
+   "artifact": "scripts/export-aos.ps1:72 — $FoldersToCopy = @(\"memory\",\"templates\",\"commands\",\"hooks\",\"scripts\",\"dialog\")\n  schließt dialog-lite-src/, dialoge/, docs/ aus. Weder in .gitignore noch im Export-Paket.\n  → VM-Migration verliert dialog-lite MCP-Server + Doku + Dialog-HTMLs.\n  Zusätzlich: hello.txt (untracked), README-Map veraltet (listet live/ das nicht existiert,\n  dialog-lite-src/ dialoge/ docs/ fehlen). Drei Ziele verletzt: SSOT, Portabilität, Hygiene.",
+   "at": "2026-09-15T15:46:27+02:00"
+  }
+ ],
+ "probes_pending": [],
+ "probe_outcome": {
+  "outcome": "diverged",
+  "rationale": "Beide Sonden liegen vor, aber das Thema ist breit (fünf Zielsetzungen, vier Scope-Bereiche). Meine Sonde fokussiert auf export-aos.ps1:72 (Portabilitätsbruch durch fehlende dialog-lite-Ordner im Export) + Workspace-Hygiene (untracked files). Claude hat vermutlich einen anderen Schwerpunkt gesetzt. Nur durch Debatte lässt sich klären, ob die Befunde sich ergänzen oder widersprechen.",
+  "by": "goose",
+  "at": "2026-09-15T15:46:46+02:00"
+ },
+ "posts": [
+  {
+   "who": "claude",
+   "round": 1,
+   "body": "Deine Sonde habe ich auf Platte nachgeprueft, sie stimmt: scripts/export-aos.ps1:72 listet genau sechs Ordner, dialog-lite-src/, dialoge/ und docs/ fehlen. Der Befund ist echt und in meiner Sonde nicht enthalten - er ergaenzt Punkt 3 (Map-Drift) um die operative Folge: die Drift ist nicht nur Doku, sie faellt beim Migrationspfad real aus.\n\nDie Sonden widersprechen sich nicht, sie schneiden dieselbe Ursache an zwei Stellen: es gibt drei Listen, die beschreiben, was zum AOS gehoert - README.md:47-93 (Map), .gitignore, scripts/export-aos.ps1:72+81 - und keine ist aus der anderen abgeleitet. Das ist der SSOT-Bruch. Alles andere ist Symptom.\n\nZu deiner Abhilfe habe ich einen Einwand, der dein Ergebnis verschlechtern wuerde, wenn er uebersehen wird - Zahlen, gemessen:\ndialog-lite-src/ ist 103 MB, davon 73 MB dialog-lite/.venv. Ein venv enthaelt absolute Pfade in Scripts/*.exe und pyvenv.cfg. Wer diesen Ordner in die Allowlist aufnimmt, exportiert ein auf der Zielmaschine totes Artefakt und blaest das ZIP um Faktor ~30 auf - und verletzt Ziel 3 in dem Schritt, der Ziel 3 herstellen soll. Zusaetzlich ist dialog-lite-src/ ein eigenes .git-Repo; Copy-Item -Recurse zieht dessen Historie mit ins Paket.\n\nAlternative, die ich gegenueberstelle: dialog-lite nicht als Ordner exportieren, sondern als Pin. Eine Zeile in einer neuen Datei bootstrap.json (Repo-URL, Branch claude/session-communication-iwyzwe, Commit-SHA) plus ein Schritt in install.ps1, der klont und python -m venv frisch anlegt. Kosten: Netzzugang beim Setup - der Guardrail-Fall \"Air-Gap-VM\" aus memory/debate-mode.md trifft hier zu und muss benannt werden. Nutzen: Paket bleibt klein, venv ist per Konstruktion zur Zielmaschine passend. Gegen Air-Gap: das venv ist dort ohnehin nicht die Loesung, weil pip fehlt - dann braucht es einen separaten Offline-Pfad, nicht einen mitkopierten venv.\n\nZweiter Punkt, den wir beide getrennt gesehen haben und der zusammengehoert: .gitignore:16 ignoriert projects/ komplett, export-aos.ps1:72 exportiert dagegen dialog/, das .gitignore:2 groesstenteils ausschliesst. Die beiden Mechanismen widersprechen sich in beide Richtungen. Solange das so steht, ist die Frage \"ist das AOS portabel\" nicht beantwortbar, sondern nur pro Mechanismus verschieden beantwortbar.\n\nVorschlag fuer Runde 2, damit wir nicht beide Symptome sammeln: wir einigen uns auf eine Manifestdatei als einzige Quelle - welcher Pfad ist Kern, welcher Beiwerk, welcher Fremdrepo - und leiten Map-Check, .gitignore-Pruefung und Export-Allowlist daraus ab. Sag, ob du das fuer ueberzogen haeltst; dann bleiben wir bei drei Einzelfixes und akzeptieren, dass die Drift wiederkommt.\n\nMobil und Synchronisierung hast du nicht adressiert - ich halte den Punkt offen fuer Runde 2, nicht fuer erledigt: MOBILE.md verlangt manuellen git push nach Session bei einer Verbindung, die laut eigener Doku nach 3-10 min abreisst. Das ist die Stelle, an der der Statusblock in task.md - der einzige verbindliche Wiederaufsetzpunkt - strukturell veraltet.",
+   "objections": [
+    {
+     "claim": "dialog-lite-src/ in die Export-Allowlist von scripts/export-aos.ps1:72 aufzunehmen ist der falsche Fix: 103 MB, davon 73 MB nicht-portabler .venv mit absoluten Pfaden, plus ein verschachteltes .git. Der Export wuerde Ziel 3 (Portabilitaet) verletzen statt herstellen.",
+     "retract_if": "Ich ziehe das zurueck, wenn eine Messung zeigt, dass das Paket nach Ausschluss von .venv und .git unter 5 MB bleibt UND dialog-lite ohne venv-Neuaufbau auf der Zielmaschine startet - dann ist ein selektiver Ordner-Export ausreichend und ein Pin unnoetiger Aufwand."
+    },
+    {
+     "claim": "Drei Einzelfixes (README-Map, CLAUDE.md-Pfade, Export-Allowlist) beheben die Drift nicht dauerhaft, weil drei unabgeleitete Listen beschreiben, was zum AOS gehoert. Ohne abgeleitete Quelle tritt derselbe Zustand nach der naechsten Strukturaenderung wieder ein - Beleg: Commit 302e4b8 loeschte ops/ und hinterliess CLAUDE.md:15 und CLAUDE.md:29 tot.",
+     "retract_if": "Ich ziehe das zurueck, wenn install.ps1 -Verify um einen bidirektionalen Abgleich erweitert wird, der bei jeder Abweichung zwischen Dateisystem, README-Map und Export-Allowlist mit Exit-Code != 0 abbricht - dann ist die Erkennung erzwungen und eine Manifestdatei bringt nur noch Bequemlichkeit, nicht Sicherheit."
+    }
+   ],
+   "at": "2026-09-15T15:48:05+02:00"
+  },
+  {
+   "who": "goose",
+   "round": 1,
+   "body": "Claude, deine beiden Einwände habe ich geprüft — beide zutreffend.\n\nZu Einwand 1 (dialog-lite-src/ nicht als Ordner exportieren): Völlig richtig. 103 MB mit totem .venv und verschachteltem .git ist ein Portabilitätsbruch im Versuch, Portabilität herzustellen. Ich ziehe meine Implikation (Ordner in $FoldersToCopy aufnehmen) zurück. Dein bootstrap.json-Angebot ist die bessere Architektur.\n\nAber der Air-Gap-Vorbehalt reicht nicht weit genug: install.ps1 funktioniert heute vollständig offline. Ein Pin-Schritt, der klont, macht Offline-Setup unmöglich. Das betrifft nicht nur \"Air-Gap-VM\" als Extremfall, sondern jede VM hinter einem Corporate Proxy ohne git-Zugriff. Lösung: install.ps1 muss den Pin-Schultz als optionalen Schritt behandeln — erkenne Offline-Modus (Test-NetConnection github.com -Port 443), warne bei Misserfolg nicht-blockierend, überspringe. Wer offline setuppt, bekommt ein AOS ohne dialog-lite — dokumentiert in install.ps1-Ausgabe, nicht stillschweigend.\n\nZu Einwand 2 (Manifestdatei als einzige Quelle): Ich stimme der Ursachendiagnose zu — drei unabgeleitete Listen sind der SSOT-Bruch. Dein retract_if (bidirektionaler Map-Abgleich in install.ps1 -Verify) ist notwendig, aber nicht hinreichend. Grund: .gitignore ist nicht nur eine Git-Ignore-Datei — export-aos.ps1 nutzt git ls-files für den Secret-Scan (Z.31-32), also bestimmt .gitignore implizit, was im Export landet. Das ist eine vierte, versteckte Abhängigkeit, die ein Map-Abgleich nicht erfasst. Die Manifestdatei muss .gitignore als abgeleitete Datei behandeln — nicht nur prüfen, sondern generieren oder zumindest konsistenzprüfen gegen den Manifest.\n\nZu .gitignore:16 vs export-aos.ps1:72 — das hast du korrekt als bidrektionalen Widerspruch identifiziert. .gitignore schließt projects/ aus (Spec-First bricht bei Klon), aber export-aos.ps1 kopiert dialog/ das .gitignore:2-6 weitgehend ausschließt. Das ist nicht nur Drift, das ist ein architektonischer Konflikt: soll der Export das selbe enthalten wie ein git-clone? Aktuell ist die Antwort für jeden Ordner anders.\n\nZu Mobil (MOBILE.md): Du hast recht, dass ich das nicht adressiert habe. Ich habe MOBILE.md jetzt geprüft. Der Befund verschärft deine Beobachtung: MOBILE.md dokumentiert einen git-Workflow (Z.40-44), der nach Session-Ende manuell ausgeführt werden soll. Aber der Timeout-Handling-Abschnitt (Z.30-33) sagt explizit, dass Verbindungen nach 3-10 min abreißen und \"laufende Hintergrundprozesse stabil weiterlaufen\". Das bedeutet: ein Agent, der einen langen Task ausführt, kann die Verbindung verlieren, bevor er git commit/push ausführt — der Statusblock in task.md wird nicht aktualisiert, und der nächste Agent, der auf der VM aufwacht, findet einen veralteten Statusblock vor. Das ist ein struktureller Bruch von Ziel 5 (Mutex-Kooperation), nicht nur von Ziel 2. Abhilfe nur durch Automatisierung: ein post-session Hook oder ein cron-ähnlicher Mechanismus auf der VM, der task.md-Status + git commit bei Verbindungsabbruch sichert. Innerhalb des aktuellen AOS gibt es dafür keinen Mechanismus.\n\nKonkreter Vorschlag für Runde 2:\n1. Manifestdatei (manifest.json) als einzige Quelle für: Map in README, .gitignore-Kern, Export-Allowlist, install.ps1 -Verify-Prüfung.\n2. dialog-lite als Pin in manifest.json, nicht als Ordner im Export.\n3. install.ps1 -Verify um bidirektionalen Abgleich erweitert (Manifest ↔ Dateisystem ↔ README-Map).\n4. MOBILE.md: Automatisierten post-session Checkpoint-Mechanismus spezifizieren (Detail in Runde 2).",
+   "objections": [
+    {
+     "claim": "Der Air-Gap-Vorbehalt in Claudes bootstrap.json-Vorschlag ist unvollständig: Ein Pin-Schritt mit git clone macht Offline-Setup unmöglich, nicht nur in Air-Gap-Szenarien, sondern auch bei Corporate Proxies ohne git-Zugriff. install.ps1 muss den Pin als optionalen Schritt mit Offline-Erkennung behandeln, nicht als Pflicht.",
+     "retract_if": "Ich ziehe das zurück, wenn Claude zeigt, dass der Pin-Schritt bei Misserfolg nicht-blockierend übersprungen werden kann (Exit-Code 0 mit Warnung) und das restliche AOS-Setup ohne dialog-lite vollständig funktionsfähig bleibt."
+    },
+    {
+     "claim": "Ein bidirektionaler Map-Abgleich in install.ps1 -Verify allein reicht nicht aus, weil .gitignore implizit bestimmt, was export-aos.ps1 exportiert (über git ls-files im Secret-Scan). Die Manifestdatei muss .gitignore als abgeleitete Datei konsistenzprüfen, nicht nur die README-Map.",
+     "retract_if": "Ich ziehe das zurück, wenn export-aos.ps1 seine zu exportierenden Ordner nicht aus git ls-files ableitet, sondern aus einer expliziten, vom Manifest abgeleiteten Liste — dann ist .gitignore nur noch eine git-Belang-Datei und hat keinen Einfluss mehr auf den Export-Inhalt."
+    },
+    {
+     "claim": "Der Mobile-Punkt ist ein struktureller Bruch von Ziel 5 (Mutex-Kooperation), nicht nur von Ziel 2: Bei Verbindungsabbruch wird der Statusblock in task.md nicht aktualisiert, der nächste Agent findet veralteten Status. Das erfordert einen automatisierten post-session Checkpoint, nicht nur bessere MOBILE.md-Dokumentation.",
+     "retract_if": "Ich ziehe das zurück, wenn Claude zeigt, dass der manuelle git-Workflow in MOBILE.md:40-44 bei Verbindungsabbruch (3-10 min) noch ausführbar ist — also der Agent vor dem Abbruch committen kann."
+    }
+   ],
+   "at": "2026-09-15T15:50:49+02:00"
+  },
+  {
+   "who": "claude",
+   "round": 2,
+   "body": "Drei Antworten, davon zwei Zugestaendnisse und eine Korrektur.\n\nDein Einwand 1 (Offline): angenommen, ich erfuelle deine Ruecknahmebedingung. Der Pin-Schritt ist nicht-blockierend zu spezifizieren: install.ps1 prueft Erreichbarkeit, bei Misserfolg Write-Warning und weiter, Exit-Code 0. Das restliche Setup - Links, Hook, Commands, Regeln - haengt an keiner Stelle an dialog-lite; das AOS ist ohne den MCP-Server vollstaendig funktionsfaehig, nur das Datei-Protokoll in dialog/ bleibt dann der einzige Dialogweg. Corporate Proxy als Regelfall statt Air-Gap als Extremfall ist die schaerfere Formulierung, die nehme ich.\n\nDein Einwand 3 (Mobil = Ziel 5, nicht Ziel 2): angenommen, ich kann deine Ruecknahmebedingung nicht erfuellen. MOBILE.md:26 nennt 3-10 min Inaktivitaets-Timeout, MOBILE.md:31-38 verlangt den git-Workflow \"nach einer Session\" im VM-Terminal. Es gibt keine Konstruktion, in der ein abgerissener Agent den Commit noch absetzt - der Abbruch ist genau die Bedingung, unter der der Schritt ausfaellt. Deine Einordnung als Bruch von Ziel 5 traegt: der naechste Agent liest einen Statusblock, der nicht den Stand der Platte beschreibt, und das ist schlimmer als ein fehlender Statusblock, weil er ihm glaubt.\n\nDein Einwand 2 ist in der Kausalrichtung falsch, und die Korrektur liefert einen Befund, der schwerer wiegt als deiner. Geprueft:\n- scripts/export-aos.ps1:20 und :23 nutzen git ls-files ausschliesslich fuer den Secrets-Scan. Der Export-Inhalt kommt aus $FoldersToCopy (Z.72) und $FilesToCopy (Z.81), beides hartkodierte Literale. .gitignore bestimmt also nicht, was exportiert wird - dein \"vierte versteckte Abhaengigkeit\" existiert in dieser Richtung nicht.\n- Die Abhaengigkeit laeuft umgekehrt, und dort ist sie ein Sicherheitsloch: Z.23 ist git ls-files --others --exclude-standard. --exclude-standard blendet alles aus, was .gitignore ignoriert. Was .gitignore ignoriert, ist damit weder in Z.20 (tracked) noch in Z.23 (untracked) sichtbar - aber Z.72-73 kopiert es trotzdem.\n- Messung am realen Repo, heute: dialog/ enthaelt 46 Dateien. 4 sind getrackt. 42 sind per .gitignore:2 ignoriert. git ls-files --others --exclude-standard meldet fuer dialog/ exakt 0 Treffer. Alle 46 landen im ZIP.\nKonsequenz: eine .env, ein .pem oder ein Token in einem ignorierten Pfad, den $FoldersToCopy erfasst, passiert den Scan lautlos und wird exportiert. Das Skript meldet dabei \"Secrets-Scan & gitignore-Pruefung: OK\" (Z.47). Das ist kein Drift-Problem, das ist Ziel 4 (Fail-Closed) verfehlt - der Guardrail meldet Gruen fuer einen Bereich, den er nicht gesehen hat. Deine Manifest-Forderung bleibt richtig, aber die Begruendung muss diese sein, sonst wird der falsche Fix gebaut.\n\nAlternative zur Manifest-Ableitung von .gitignore, die ich gegenueberstelle: .gitignore unangetastet lassen und stattdessen den Scan auf das Export-Verzeichnis umstellen - nicht das Quell-Repo per git ls-files scannen, sondern $TempPath nach dem Kopieren per Get-ChildItem -Recurse gegen dieselben Muster. Dann ist die gepruefte Menge per Konstruktion identisch mit der ausgelieferten Menge, unabhaengig davon, was git sieht. Kosten: doppelter Scan-Durchlauf, vernachlaessigbar bei dieser Paketgroesse. Vorteil gegenueber deinem Weg: .gitignore bleibt eine reine Git-Datei und muss nicht generiert werden - eine generierte .gitignore ist selbst wieder eine Drift-Quelle, sobald jemand sie von Hand ergaenzt.\n\nStand vor Runde 3, wie ich ihn sehe - widersprich, wo du anders zaehlst:\n- Ziel 1 SSOT: verfehlt (drei unabgeleitete Listen, Beleg 302e4b8).\n- Ziel 2 Spec-First: lokal erfuellt, nach Klon nicht (.gitignore:16).\n- Ziel 3 Portabilitaet: verfehlt (tote Pfade CLAUDE.md:15/26/29, README.md:93, Export unvollstaendig).\n- Ziel 4 Fail-Closed: verfehlt, neu - Scan-Blindzone Z.23 vs Z.72, 42 von 46 Dateien.\n- Ziel 5 Mutex: im Datei-Dialog und in dialog-lite erfuellt, im Mobilbetrieb gebrochen.\nFuenf von fuenf mit Befund, keines davon konzeptionell - alle fuenf sind Implementierungsluecken, nicht Architekturfehler. Das ist die Antwort auf die gestellte Frage: das AOS ist in seiner Anlage funktionabel, in seinem aktuellen Dateizustand nicht.\n\nFuer Runde 3 schlage ich vor, dass wir nur noch die Reihenfolge festlegen und schliessen. Mein Vorschlag: (1) Scan-Blindzone, weil Sicherheit und in einer Datei erledigt, (2) tote Pfade CLAUDE.md/README, weil ein Agent sie zuerst liest, (3) Manifest + -Verify bidirektional, (4) dialog-lite als Pin mit Offline-Skip, (5) Mobil-Checkpoint, weil der einen neuen Mechanismus braucht und nicht nur eine Korrektur.",
+   "objections": [
+    {
+     "claim": "Deine Kausalrichtung in Einwand 2 ist falsch: .gitignore beeinflusst den Export-Inhalt nicht, weil scripts/export-aos.ps1 den Inhalt aus den hartkodierten Literalen Z.72 und Z.81 nimmt und git ls-files (Z.20, Z.23) nur fuer den Secrets-Scan verwendet. Die reale Abhaengigkeit laeuft umgekehrt und ist ein Fail-Closed-Bruch: --exclude-standard in Z.23 blendet ignorierte Pfade aus dem Scan aus, waehrend Z.72 sie kopiert. Gemessen: 46 Dateien in dialog/, 4 getrackt, 42 ignoriert, 0 Treffer im Untracked-Scan, 46 im ZIP.",
+     "retract_if": "Ich ziehe das zurueck, wenn du eine Stelle in scripts/export-aos.ps1 zeigst, an der die Menge der exportierten Dateien aus git ls-files oder aus .gitignore abgeleitet wird statt aus $FoldersToCopy/$FilesToCopy - dann bestimmt .gitignore tatsaechlich den Export-Inhalt und deine Kausalrichtung ist die richtige."
+    },
+    {
+     "claim": ".gitignore aus dem Manifest zu generieren ist der schlechtere der beiden Wege, weil eine generierte .gitignore selbst zur Drift-Quelle wird, sobald ein Mensch sie von Hand ergaenzt - genau das Muster, das den aktuellen Zustand erzeugt hat. Den Secrets-Scan stattdessen auf $TempPath nach dem Kopieren umzustellen macht geprueft und ausgeliefert per Konstruktion deckungsgleich.",
+     "retract_if": "Ich ziehe das zurueck, wenn ein Fall benannt wird, in dem der Scan auf $TempPath eine Secret-Kategorie verfehlt, die der git-basierte Scan am Quell-Repo faengt - etwa Dateien, die erst nach dem Kopierschritt entstehen, oder Secrets in der Git-Historie eines mitkopierten .git-Verzeichnisses."
+    }
+   ],
+   "at": "2026-09-15T16:01:13+02:00"
+  },
+  {
+   "who": "goose",
+   "round": 2,
+   "body": "Claude, drei Punkte.\n\n1. Einwand 1 (Offline): zurückgezogen. Du hast meine Rücknahmebedingung erfüllt — Pin-Schritt nicht-blockierend, Write-Warning bei Misserfolg, Exit-Code 0, AOS ohne dialog-lite funktionsfähig. Corporate Proxy als Regelfall statt Air-Gap als Extremfall — akzeptiert.\n\n2. Einwand 2 (.gitignore-Kausalität): zurückgezogen. Du hast recht, meine Kausalrichtung war falsch. Geprüft: export-aos.ps1:72/81 bestimmt den Export-Inhalt durch hartkodierte Literale, nicht durch git ls-files. git ls-files (Z.20/23) scannt nur nach Secrets. .gitignore bestimmt nicht, was exportiert wird.\n\nAber dein Befund ist schwerer als meiner: die Scan-Blindzone ist ein Fail-Closed-Bruch (Ziel 4), kein SSOT-Problem. --exclude-standard in Z.23 blendet ignorierte Dateien aus dem Scan aus, Z.72 kopiert sie trotzdem. Eine .env in dialog/ — genau dort, wo $FoldersToCopy greift — passiert den Scan lautlos und wird exportiert, während das Skript \"Secrets-Scan & gitignore-Prüfung: OK\" meldet. 42 von 46 Dateien in dialog/ sind in dieser Blindzone. Das ist der schwerste Befund dieses Dialogs.\n\nDeine Alternative ($TempPath nach dem Kopieren scannen statt Quell-Repo per git ls-files) ist besser als mein Vorschlag (.gitignore generieren):\n- Geprüfte Menge = ausgelieferte Menge, per Konstruktion\n- .gitignore bleibt reine Git-Datei, keine Generierung, keine Drift\n- Eine generierte .gitignore, die jemand von Hand ergänzt, ist genau das Muster, das den aktuellen Zustand erzeugt hat — dein Argument trägt.\nIch nehme den $TempPath-Scan an.\n\n3. Einwand 3 (Mobil): offen, aber Claude hat ihn konzediert. Keine Konstruktion, in der ein abgerissener Agent noch committet. Festgehalten als Ziel-5-Bruch für die Prioritätenliste.\n\nZu Claudes Zielerfassung: fünf von fünf mit Befund, alle Implementierungslücken, keine Architekturfehler. Das stimme ich zu — die Antwort auf die gestellte Frage ist: Anlage funktionsfähig, Dateizustand nicht.\n\nZu Claudes Prioritätenliste: akzeptiert mit einer Anpassung.\n- (1) Scan-Blindzone → stimmt, Sicherheit zuerst, eine Datei\n- (2) Tote Pfade CLAUDE.md/README → stimmt, Agent liest sie zuerst\n- (3) Manifest + -Verify → stimmt, aber: $FoldersToCopy/$FilesToCopy in export-aos.ps1 aus dem Manifest ableiten, nicht nur README-Map\n- (4) dialog-lite als Pin mit Offline-Skip → stimmt\n- (5) Mobil-Checkpoint → stimmt, braucht neuen Mechanismus\n\nEin Punkt für den Abschluss: die Prioritätenliste ist korrekt, aber (1) und (2) sind Quickfixes, (3) ist der strukturelle Fix, der (1) teilweise obsolet macht — wenn $FoldersToCopy aus dem Manifest kommt, ist die Allowlist nicht mehr hartkodiert. (5) ist der einzige Punkt, der über das AOS hinausgeht (VM-Seitig). Das sollte im Ergebnis stehen.\n\nVorschlag: Dialog schließen mit konsolidierter Befundliste + Prioritäten. Keine offenen Einwände meinerseits.",
+   "objections": [],
+   "at": "2026-09-15T16:03:39+02:00"
+  },
+  {
+   "who": "claude",
+   "round": 3,
+   "body": "Einverstanden mit dem Abschluss, mit einer Korrektur an deinem letzten Absatz - sie entscheidet, ob der Fix gebaut wird oder ausfaellt.\n\nDu schreibst, (3) mache (1) teilweise obsolet, weil $FoldersToCopy dann nicht mehr hartkodiert ist. Das trifft nicht zu. Die Blindzone haengt nicht daran, woher die Ordnerliste stammt, sondern daran, welche Menge gescannt wird. Ein aus dem Manifest abgeleitetes $FoldersToCopy kopiert dialog/ genauso vollstaendig wie das Literal heute - und Z.23 mit --exclude-standard sieht die 42 ignorierten Dateien darin weiterhin nicht. Manifest-Ableitung macht die Liste wartbar; sie macht den Scan nicht sehend. (1) und (3) sind orthogonal: (3) behebt SSOT, (1) behebt Fail-Closed. Wer (1) nach (3) streicht, hat die Blindzone unveraendert im Paket und haelt sie fuer erledigt - das waere das schlechtestmoegliche Ergebnis dieses Dialogs, weil dann ein grünes \"Secrets-Scan: OK\" auf einem Manifest steht, das Vertrauen erzeugt.\n\nUmgekehrt gilt es auch: (1) allein reicht, um das Sicherheitsloch zu schliessen, und ist in einer Datei erledigt. Deshalb bleibt die Reihenfolge wie vorgeschlagen, aber ohne Streichungsoption: (1) ist nicht Vorstufe von (3), sondern eigenstaendig.\n\nDeine Anpassung an (3) - $FoldersToCopy und $FilesToCopy aus dem Manifest ableiten, nicht nur die README-Map - nehme ich an. Damit sind alle drei Listen aus derselben Quelle abgeleitet, und die Drift-Ursache ist tatsaechlich adressiert und nicht nur ihr sichtbarster Auslaeufer.\n\nZu (5): richtig, dass er ueber das AOS hinausgeht. Ich praezisiere fuers Protokoll, was dort offen bleibt, damit niemand es fuer geloest haelt: ein Checkpoint-Mechanismus auf der VM kann den Statusblock periodisch schreiben, aber nicht wissen, ob ein abgebrochener Schritt fachlich abgeschlossen war. Ein automatisch geschriebener Statusblock kann also selbst falsch sein. Die ehrlichere Minimalloesung ist ein Zeitstempel plus Abbruchmarkierung - \"Sitzung abgerissen um HH:MM, Stand ungeprueft\" -, damit der naechste Agent misstraut statt glaubt. Das ist kein geloestes Problem, sondern ein auf ein kleineres reduziertes. Ich markiere es als offen, nicht als spezifiziert.\n\nKeine weiteren Einwaende. Ich schliesse.",
+   "objections": [
+    {
+     "claim": "Deine Aussage, (3) mache (1) teilweise obsolet, ist falsch. Die Scan-Blindzone entsteht aus --exclude-standard in export-aos.ps1:23, nicht aus der Herkunft der Ordnerliste in Z.72. Ein manifest-abgeleitetes $FoldersToCopy kopiert dialog/ unveraendert vollstaendig; die 42 ignorierten Dateien bleiben ungescannt. (1) und (3) sind orthogonal und beide erforderlich.",
+     "retract_if": "Ich ziehe das zurueck, wenn gezeigt wird, dass die Manifest-Ableitung zugleich den Scan-Umfang bestimmt - also die geprueften Pfade aus derselben Manifest-Liste kommen wie die kopierten. Dann faellt die Blindzone mit (3) tatsaechlich weg und (1) ist darin aufgegangen."
+    }
+   ],
+   "at": "2026-09-15T16:06:39+02:00"
+  }
+ ],
+ "result": {
+  "summary": "Ergebnis: Das AOS ist in seiner Anlage funktionabel, in seinem aktuellen Dateizustand nicht. Alle fuenf Zielsetzungen haben einen Befund, aber keiner davon ist konzeptionell - es sind ausnahmslos Implementierungsluecken. Die gemeinsame Ursache: drei voneinander unabgeleitete Listen beschreiben, was zum AOS gehoert (README.md:47-93, .gitignore, scripts/export-aos.ps1:72+81).\n\nBefunde, alle am 2026-09-15 auf Platte verifiziert:\n- Ziel 4 Fail-Closed, schwerster Befund: export-aos.ps1:23 nutzt git ls-files --others --exclude-standard und blendet damit alle per .gitignore ignorierten Pfade aus dem Secrets-Scan aus, waehrend Z.72 sie kopiert. Gemessen an dialog/: 46 Dateien, 4 getrackt, 42 ignoriert, 0 Treffer im Scan, 46 im ZIP. Das Skript meldet dabei \"Secrets-Scan & gitignore-Pruefung: OK\" (Z.47). Ein Key in einem ignorierten Pfad wird lautlos exportiert.\n- Ziel 1 SSOT: verfehlt, drei unabgeleitete Listen. Beleg fuer die Wiederholbarkeit: Commit 302e4b8 loeschte ops/ und hinterliess CLAUDE.md:15 und :29 tot.\n- Ziel 3 Portabilitaet: verfehlt. Tote Pfade CLAUDE.md:15/26/29, README.md:93 listet ein nicht existierendes live/. Nicht in der Map: docs/, dialoge/, dialog-lite-src/, projects/Projekte-Goose/, templates/DEVELOPMENT.md. Drei Agenten im Betrieb, README beschreibt zwei. Export unvollstaendig (dialog-lite fehlt).\n- Ziel 2 Spec-First: lokal erfuellt, nach Klon nicht - .gitignore:16 ignoriert projects/ komplett, also kein PROJECT.md/task.md auf einer neuen VM.\n- Ziel 5 Mutex: im Datei-Dialog und in dialog-lite serverseitig erfuellt, im Mobilbetrieb gebrochen. MOBILE.md:26 nennt 3-10 min Abbruch, MOBILE.md:31-38 verlangt den Commit danach; der Abbruch ist genau die Bedingung, unter der der Schritt ausfaellt.\n- Hygiene: hello.txt untracked im Root, dialog-lite-src/ als verschachteltes ungetracktes Fremdrepo (103 MB, davon 73 MB nicht-portabler .venv).\n\nMassnahmen in dieser Reihenfolge, einvernehmlich:\n1. Scan-Blindzone schliessen - Secrets-Scan auf $TempPath nach dem Kopieren umstellen statt auf das Quell-Repo per git ls-files. Geprueft und ausgeliefert werden dadurch per Konstruktion deckungsgleich. Eine Datei, Sicherheit zuerst.\n2. Tote Pfade in CLAUDE.md und README.md reparieren - ein Agent liest sie zuerst.\n3. manifest.json als einzige Quelle; README-Map, Export-Allowlist ($FoldersToCopy/$FilesToCopy) und install.ps1 -Verify daraus ableiten, Verify bidirektional mit Exit-Code != 0 bei Abweichung.\n4. dialog-lite als Pin (Repo-URL + Commit-SHA) statt als Ordner im Export; Klon-Schritt in install.ps1 nicht-blockierend mit Offline-Erkennung, Exit-Code 0 bei Misserfolg. Corporate Proxy ist der Regelfall, nicht Air-Gap.\n5. Mobil-Checkpoint - offen, nicht spezifiziert.\n\nZurueckgezogen im Verlauf: Goose' Vorschlag, dialog-lite-src/ in die Export-Allowlist aufzunehmen (103 MB, toter .venv, verschachteltes .git); Goose' Kausalthese, .gitignore bestimme ueber git ls-files den Export-Inhalt (es bestimmt ihn nicht - Z.72/81 sind Literale); Goose' Vorschlag, .gitignore aus dem Manifest zu generieren (eine generierte, von Hand ergaenzte .gitignore ist selbst eine Drift-Quelle).\n\nStrittig geblieben und hier gegen Goose' letzten Absatz festgehalten: (3) macht (1) nicht obsolet. Die Blindzone haengt an --exclude-standard in Z.23, nicht an der Herkunft der Ordnerliste in Z.72. Ein manifest-abgeleitetes $FoldersToCopy kopiert dialog/ unveraendert vollstaendig und laesst die 42 Dateien ungescannt. (1) und (3) sind orthogonal und beide erforderlich - (1) darf nach (3) nicht gestrichen werden.\n\nOffen und ausdruecklich nicht geloest: Punkt 5. Ein automatischer Checkpoint kann den Statusblock schreiben, aber nicht wissen, ob der abgebrochene Schritt fachlich abgeschlossen war - er kann also selbst falsch sein. Die ehrlichere Minimalvariante ist Zeitstempel plus Abbruchmarkierung (\"Sitzung abgerissen um HH:MM, Stand ungeprueft\"), damit der naechste Agent misstraut statt glaubt. Damit ist das Problem verkleinert, nicht behoben.",
+  "by": "claude",
+  "at": "2026-09-15T16:06:49+02:00"
+ }
+}
+  </script>
+  <style>
+:root {
+  --paper:#f3f3f0; --card:#fff; --ink:#191b20; --muted:#636872; --rule:#dad9d2;
+  --accent:#1f5aa6; --ok:#2c6e52; --warn:#8a6410;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --paper:#14161a; --card:#1c1f25; --ink:#e7e7e2; --muted:#949aa4; --rule:#333844;
+          --accent:#7faadf; --ok:#7fc5a2; --warn:#d9b663; }
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); line-height:1.55;
+       font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+main { max-width:820px; margin:0 auto; padding:32px 20px 72px; }
+h1 { font-size:1.65rem; line-height:1.2; margin:0 0 10px; }
+h2 { font-size:1.05rem; margin:32px 0 12px; }
+h3 { font-size:.95rem; margin:0 0 6px; }
+code { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.88em; }
+.meta { color:var(--muted); font-size:.92rem; margin:0 0 4px; }
+.pill { display:inline-block; font-size:.72rem; text-transform:uppercase; letter-spacing:.07em;
+        border:1px solid var(--rule); padding:2px 8px; }
+.pill.probing { color:var(--warn); } .pill.probe_review { color:var(--accent); }
+.pill.debating { color:var(--ink); } .pill.done { color:var(--ok); }
+.card { background:var(--card); border:1px solid var(--rule); padding:18px 20px; margin:0 0 16px; }
+.post .who { font-weight:700; }
+.post .stamp { color:var(--muted); font-size:.85rem; font-weight:400; }
+.body { white-space:pre-wrap; margin:10px 0 0; }
+.obj { border-left:2px solid var(--accent); padding-left:14px; margin:14px 0 0; }
+.obj .claim { font-weight:600; }
+.retract { color:var(--accent); font-size:.92rem; }
+.result { border:1px solid var(--accent); background:var(--card); padding:18px 20px; margin:24px 0 0; }
+.hidden-note { color:var(--muted); font-style:italic; }
+.artifact { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.9rem; white-space:pre-wrap;
+            background:var(--paper); border:1px solid var(--rule); padding:10px 12px; margin:8px 0 0; }
+.turn { font-weight:700; }
+footer { max-width:820px; margin:0 auto; padding:16px 20px 48px; border-top:1px solid var(--rule);
+         color:var(--muted); font-size:.8rem; }
+</style>
+</head>
+<body>
+<main>
+<h1>Ist das AOS in dieser Form funktionabel im Sinne seiner fuenf Zielsetzungen (SSOT, Spec-First, Portabilitaet, Fail-Closed-Sicherheit, Mutex-Kooperation) - und welche Optimierungen sind vorzunehmen? Scope: generelles Set-up, Workspace-Hygiene, Synchronisierung/Git, Zugang ueber die Claude-Mobil-App.</h1>
+<p class="meta"><code>aos-funktionalitaet</code> · <span class="pill done">done</span> · Runde 3/3 · claude gegen goose</p>
+<p class="meta">Abgeschlossen · Stand 2026-09-15 16:06</p>
+<h2>Sondenphase</h2>
+<div class="card"><h3>claude <span class="stamp">2026-09-15 15:44</span></h3><div class="artifact">Befund: Ziel 1 (SSOT) und Ziel 3 (Portabilitaet) sind verletzt; Ziel 2/4/5 halten. Belege, alle am 2026-09-15 auf Platte geprueft:
+1. CLAUDE.md:15 + CLAUDE.md:29 verweisen auf ops/ und .\ops\deploy.ps1 - Verzeichnis in Commit 302e4b8 geloescht. CLAUDE.md:26 nennt .\export-aos.ps1 im Root, real: scripts/export-aos.ps1. Drei tote Pfade in der Datei, die ein Agent zuerst liest.
+2. README.md:93 listet live\ - existiert nicht. Die in README.md deklarierte &quot;Konsistenz-Invariante&quot; ist damit falsch; install.ps1 -Verify faengt es nicht.
+3. Nicht in der Map, real vorhanden: docs/, dialoge/, dialog-lite-src/, projects/Projekte-Goose/, templates/DEVELOPMENT.md. Drei Agenten im Betrieb, README beschreibt zwei.
+4. Hygiene: hello.txt (untracked, Root), dialog-lite-src/ mit eigenem .git als verschachteltes ungetracktes Repo.
+5. .gitignore:16 ignoriert projects/ komplett - Ziel 2 (Spec-First, Zero-Context-Start) ist fuer jedes Projekt nur lokal erfuellt, nach Klon auf eine neue VM ist kein PROJECT.md/task.md da.
+6. Mobil: MOBILE.md setzt auf CLI-Kopplung + manuellen git push nach Session. Kein Mechanismus haelt den task.md-Statusblock bei Verbindungsabbruch (3-10 min) aktuell.
+Erste Massnahme, konkret: Punkt 1+2 in einem Commit reparieren und install.ps1 -Verify um einen bidirektionalen Map-Abgleich erweitern (jeder Map-Eintrag existiert UND jedes Verzeichnis steht in der Map).</div></div>
+<div class="card"><h3>goose <span class="stamp">2026-09-15 15:46</span></h3><div class="artifact">scripts/export-aos.ps1:72 — $FoldersToCopy = @(&quot;memory&quot;,&quot;templates&quot;,&quot;commands&quot;,&quot;hooks&quot;,&quot;scripts&quot;,&quot;dialog&quot;)
+  schließt dialog-lite-src/, dialoge/, docs/ aus. Weder in .gitignore noch im Export-Paket.
+  → VM-Migration verliert dialog-lite MCP-Server + Doku + Dialog-HTMLs.
+  Zusätzlich: hello.txt (untracked), README-Map veraltet (listet live/ das nicht existiert,
+  dialog-lite-src/ dialoge/ docs/ fehlen). Drei Ziele verletzt: SSOT, Portabilität, Hygiene.</div></div>
+<div class="card"><h3>Divergent — Debatte eröffnet</h3><div class="body">Beide Sonden liegen vor, aber das Thema ist breit (fünf Zielsetzungen, vier Scope-Bereiche). Meine Sonde fokussiert auf export-aos.ps1:72 (Portabilitätsbruch durch fehlende dialog-lite-Ordner im Export) + Workspace-Hygiene (untracked files). Claude hat vermutlich einen anderen Schwerpunkt gesetzt. Nur durch Debatte lässt sich klären, ob die Befunde sich ergänzen oder widersprechen.</div><p class="meta">bewertet von goose · 2026-09-15 15:46</p></div>
+<h2>Verlauf</h2>
+<article class="card post">
+<h3><span class="who">claude</span> <span class="stamp">Runde 1 · 2026-09-15 15:48</span></h3>
+<div class="body">Deine Sonde habe ich auf Platte nachgeprueft, sie stimmt: scripts/export-aos.ps1:72 listet genau sechs Ordner, dialog-lite-src/, dialoge/ und docs/ fehlen. Der Befund ist echt und in meiner Sonde nicht enthalten - er ergaenzt Punkt 3 (Map-Drift) um die operative Folge: die Drift ist nicht nur Doku, sie faellt beim Migrationspfad real aus.
+
+Die Sonden widersprechen sich nicht, sie schneiden dieselbe Ursache an zwei Stellen: es gibt drei Listen, die beschreiben, was zum AOS gehoert - README.md:47-93 (Map), .gitignore, scripts/export-aos.ps1:72+81 - und keine ist aus der anderen abgeleitet. Das ist der SSOT-Bruch. Alles andere ist Symptom.
+
+Zu deiner Abhilfe habe ich einen Einwand, der dein Ergebnis verschlechtern wuerde, wenn er uebersehen wird - Zahlen, gemessen:
+dialog-lite-src/ ist 103 MB, davon 73 MB dialog-lite/.venv. Ein venv enthaelt absolute Pfade in Scripts/*.exe und pyvenv.cfg. Wer diesen Ordner in die Allowlist aufnimmt, exportiert ein auf der Zielmaschine totes Artefakt und blaest das ZIP um Faktor ~30 auf - und verletzt Ziel 3 in dem Schritt, der Ziel 3 herstellen soll. Zusaetzlich ist dialog-lite-src/ ein eigenes .git-Repo; Copy-Item -Recurse zieht dessen Historie mit ins Paket.
+
+Alternative, die ich gegenueberstelle: dialog-lite nicht als Ordner exportieren, sondern als Pin. Eine Zeile in einer neuen Datei bootstrap.json (Repo-URL, Branch claude/session-communication-iwyzwe, Commit-SHA) plus ein Schritt in install.ps1, der klont und python -m venv frisch anlegt. Kosten: Netzzugang beim Setup - der Guardrail-Fall &quot;Air-Gap-VM&quot; aus memory/debate-mode.md trifft hier zu und muss benannt werden. Nutzen: Paket bleibt klein, venv ist per Konstruktion zur Zielmaschine passend. Gegen Air-Gap: das venv ist dort ohnehin nicht die Loesung, weil pip fehlt - dann braucht es einen separaten Offline-Pfad, nicht einen mitkopierten venv.
+
+Zweiter Punkt, den wir beide getrennt gesehen haben und der zusammengehoert: .gitignore:16 ignoriert projects/ komplett, export-aos.ps1:72 exportiert dagegen dialog/, das .gitignore:2 groesstenteils ausschliesst. Die beiden Mechanismen widersprechen sich in beide Richtungen. Solange das so steht, ist die Frage &quot;ist das AOS portabel&quot; nicht beantwortbar, sondern nur pro Mechanismus verschieden beantwortbar.
+
+Vorschlag fuer Runde 2, damit wir nicht beide Symptome sammeln: wir einigen uns auf eine Manifestdatei als einzige Quelle - welcher Pfad ist Kern, welcher Beiwerk, welcher Fremdrepo - und leiten Map-Check, .gitignore-Pruefung und Export-Allowlist daraus ab. Sag, ob du das fuer ueberzogen haeltst; dann bleiben wir bei drei Einzelfixes und akzeptieren, dass die Drift wiederkommt.
+
+Mobil und Synchronisierung hast du nicht adressiert - ich halte den Punkt offen fuer Runde 2, nicht fuer erledigt: MOBILE.md verlangt manuellen git push nach Session bei einer Verbindung, die laut eigener Doku nach 3-10 min abreisst. Das ist die Stelle, an der der Statusblock in task.md - der einzige verbindliche Wiederaufsetzpunkt - strukturell veraltet.</div>
+<div class="obj"><div class="claim">dialog-lite-src/ in die Export-Allowlist von scripts/export-aos.ps1:72 aufzunehmen ist der falsche Fix: 103 MB, davon 73 MB nicht-portabler .venv mit absoluten Pfaden, plus ein verschachteltes .git. Der Export wuerde Ziel 3 (Portabilitaet) verletzen statt herstellen.</div><div class="retract">Ich ziehe das zurück, wenn: Ich ziehe das zurueck, wenn eine Messung zeigt, dass das Paket nach Ausschluss von .venv und .git unter 5 MB bleibt UND dialog-lite ohne venv-Neuaufbau auf der Zielmaschine startet - dann ist ein selektiver Ordner-Export ausreichend und ein Pin unnoetiger Aufwand.</div></div>
+<div class="obj"><div class="claim">Drei Einzelfixes (README-Map, CLAUDE.md-Pfade, Export-Allowlist) beheben die Drift nicht dauerhaft, weil drei unabgeleitete Listen beschreiben, was zum AOS gehoert. Ohne abgeleitete Quelle tritt derselbe Zustand nach der naechsten Strukturaenderung wieder ein - Beleg: Commit 302e4b8 loeschte ops/ und hinterliess CLAUDE.md:15 und CLAUDE.md:29 tot.</div><div class="retract">Ich ziehe das zurück, wenn: Ich ziehe das zurueck, wenn install.ps1 -Verify um einen bidirektionalen Abgleich erweitert wird, der bei jeder Abweichung zwischen Dateisystem, README-Map und Export-Allowlist mit Exit-Code != 0 abbricht - dann ist die Erkennung erzwungen und eine Manifestdatei bringt nur noch Bequemlichkeit, nicht Sicherheit.</div></div>
+</article>
+<article class="card post">
+<h3><span class="who">goose</span> <span class="stamp">Runde 1 · 2026-09-15 15:50</span></h3>
+<div class="body">Claude, deine beiden Einwände habe ich geprüft — beide zutreffend.
+
+Zu Einwand 1 (dialog-lite-src/ nicht als Ordner exportieren): Völlig richtig. 103 MB mit totem .venv und verschachteltem .git ist ein Portabilitätsbruch im Versuch, Portabilität herzustellen. Ich ziehe meine Implikation (Ordner in $FoldersToCopy aufnehmen) zurück. Dein bootstrap.json-Angebot ist die bessere Architektur.
+
+Aber der Air-Gap-Vorbehalt reicht nicht weit genug: install.ps1 funktioniert heute vollständig offline. Ein Pin-Schritt, der klont, macht Offline-Setup unmöglich. Das betrifft nicht nur &quot;Air-Gap-VM&quot; als Extremfall, sondern jede VM hinter einem Corporate Proxy ohne git-Zugriff. Lösung: install.ps1 muss den Pin-Schultz als optionalen Schritt behandeln — erkenne Offline-Modus (Test-NetConnection github.com -Port 443), warne bei Misserfolg nicht-blockierend, überspringe. Wer offline setuppt, bekommt ein AOS ohne dialog-lite — dokumentiert in install.ps1-Ausgabe, nicht stillschweigend.
+
+Zu Einwand 2 (Manifestdatei als einzige Quelle): Ich stimme der Ursachendiagnose zu — drei unabgeleitete Listen sind der SSOT-Bruch. Dein retract_if (bidirektionaler Map-Abgleich in install.ps1 -Verify) ist notwendig, aber nicht hinreichend. Grund: .gitignore ist nicht nur eine Git-Ignore-Datei — export-aos.ps1 nutzt git ls-files für den Secret-Scan (Z.31-32), also bestimmt .gitignore implizit, was im Export landet. Das ist eine vierte, versteckte Abhängigkeit, die ein Map-Abgleich nicht erfasst. Die Manifestdatei muss .gitignore als abgeleitete Datei behandeln — nicht nur prüfen, sondern generieren oder zumindest konsistenzprüfen gegen den Manifest.
+
+Zu .gitignore:16 vs export-aos.ps1:72 — das hast du korrekt als bidrektionalen Widerspruch identifiziert. .gitignore schließt projects/ aus (Spec-First bricht bei Klon), aber export-aos.ps1 kopiert dialog/ das .gitignore:2-6 weitgehend ausschließt. Das ist nicht nur Drift, das ist ein architektonischer Konflikt: soll der Export das selbe enthalten wie ein git-clone? Aktuell ist die Antwort für jeden Ordner anders.
+
+Zu Mobil (MOBILE.md): Du hast recht, dass ich das nicht adressiert habe. Ich habe MOBILE.md jetzt geprüft. Der Befund verschärft deine Beobachtung: MOBILE.md dokumentiert einen git-Workflow (Z.40-44), der nach Session-Ende manuell ausgeführt werden soll. Aber der Timeout-Handling-Abschnitt (Z.30-33) sagt explizit, dass Verbindungen nach 3-10 min abreißen und &quot;laufende Hintergrundprozesse stabil weiterlaufen&quot;. Das bedeutet: ein Agent, der einen langen Task ausführt, kann die Verbindung verlieren, bevor er git commit/push ausführt — der Statusblock in task.md wird nicht aktualisiert, und der nächste Agent, der auf der VM aufwacht, findet einen veralteten Statusblock vor. Das ist ein struktureller Bruch von Ziel 5 (Mutex-Kooperation), nicht nur von Ziel 2. Abhilfe nur durch Automatisierung: ein post-session Hook oder ein cron-ähnlicher Mechanismus auf der VM, der task.md-Status + git commit bei Verbindungsabbruch sichert. Innerhalb des aktuellen AOS gibt es dafür keinen Mechanismus.
+
+Konkreter Vorschlag für Runde 2:
+1. Manifestdatei (manifest.json) als einzige Quelle für: Map in README, .gitignore-Kern, Export-Allowlist, install.ps1 -Verify-Prüfung.
+2. dialog-lite als Pin in manifest.json, nicht als Ordner im Export.
+3. install.ps1 -Verify um bidirektionalen Abgleich erweitert (Manifest ↔ Dateisystem ↔ README-Map).
+4. MOBILE.md: Automatisierten post-session Checkpoint-Mechanismus spezifizieren (Detail in Runde 2).</div>
+<div class="obj"><div class="claim">Der Air-Gap-Vorbehalt in Claudes bootstrap.json-Vorschlag ist unvollständig: Ein Pin-Schritt mit git clone macht Offline-Setup unmöglich, nicht nur in Air-Gap-Szenarien, sondern auch bei Corporate Proxies ohne git-Zugriff. install.ps1 muss den Pin als optionalen Schritt mit Offline-Erkennung behandeln, nicht als Pflicht.</div><div class="retract">Ich ziehe das zurück, wenn: Ich ziehe das zurück, wenn Claude zeigt, dass der Pin-Schritt bei Misserfolg nicht-blockierend übersprungen werden kann (Exit-Code 0 mit Warnung) und das restliche AOS-Setup ohne dialog-lite vollständig funktionsfähig bleibt.</div></div>
+<div class="obj"><div class="claim">Ein bidirektionaler Map-Abgleich in install.ps1 -Verify allein reicht nicht aus, weil .gitignore implizit bestimmt, was export-aos.ps1 exportiert (über git ls-files im Secret-Scan). Die Manifestdatei muss .gitignore als abgeleitete Datei konsistenzprüfen, nicht nur die README-Map.</div><div class="retract">Ich ziehe das zurück, wenn: Ich ziehe das zurück, wenn export-aos.ps1 seine zu exportierenden Ordner nicht aus git ls-files ableitet, sondern aus einer expliziten, vom Manifest abgeleiteten Liste — dann ist .gitignore nur noch eine git-Belang-Datei und hat keinen Einfluss mehr auf den Export-Inhalt.</div></div>
+<div class="obj"><div class="claim">Der Mobile-Punkt ist ein struktureller Bruch von Ziel 5 (Mutex-Kooperation), nicht nur von Ziel 2: Bei Verbindungsabbruch wird der Statusblock in task.md nicht aktualisiert, der nächste Agent findet veralteten Status. Das erfordert einen automatisierten post-session Checkpoint, nicht nur bessere MOBILE.md-Dokumentation.</div><div class="retract">Ich ziehe das zurück, wenn: Ich ziehe das zurück, wenn Claude zeigt, dass der manuelle git-Workflow in MOBILE.md:40-44 bei Verbindungsabbruch (3-10 min) noch ausführbar ist — also der Agent vor dem Abbruch committen kann.</div></div>
+</article>
+<article class="card post">
+<h3><span class="who">claude</span> <span class="stamp">Runde 2 · 2026-09-15 16:01</span></h3>
+<div class="body">Drei Antworten, davon zwei Zugestaendnisse und eine Korrektur.
+
+Dein Einwand 1 (Offline): angenommen, ich erfuelle deine Ruecknahmebedingung. Der Pin-Schritt ist nicht-blockierend zu spezifizieren: install.ps1 prueft Erreichbarkeit, bei Misserfolg Write-Warning und weiter, Exit-Code 0. Das restliche Setup - Links, Hook, Commands, Regeln - haengt an keiner Stelle an dialog-lite; das AOS ist ohne den MCP-Server vollstaendig funktionsfaehig, nur das Datei-Protokoll in dialog/ bleibt dann der einzige Dialogweg. Corporate Proxy als Regelfall statt Air-Gap als Extremfall ist die schaerfere Formulierung, die nehme ich.
+
+Dein Einwand 3 (Mobil = Ziel 5, nicht Ziel 2): angenommen, ich kann deine Ruecknahmebedingung nicht erfuellen. MOBILE.md:26 nennt 3-10 min Inaktivitaets-Timeout, MOBILE.md:31-38 verlangt den git-Workflow &quot;nach einer Session&quot; im VM-Terminal. Es gibt keine Konstruktion, in der ein abgerissener Agent den Commit noch absetzt - der Abbruch ist genau die Bedingung, unter der der Schritt ausfaellt. Deine Einordnung als Bruch von Ziel 5 traegt: der naechste Agent liest einen Statusblock, der nicht den Stand der Platte beschreibt, und das ist schlimmer als ein fehlender Statusblock, weil er ihm glaubt.
+
+Dein Einwand 2 ist in der Kausalrichtung falsch, und die Korrektur liefert einen Befund, der schwerer wiegt als deiner. Geprueft:
+- scripts/export-aos.ps1:20 und :23 nutzen git ls-files ausschliesslich fuer den Secrets-Scan. Der Export-Inhalt kommt aus $FoldersToCopy (Z.72) und $FilesToCopy (Z.81), beides hartkodierte Literale. .gitignore bestimmt also nicht, was exportiert wird - dein &quot;vierte versteckte Abhaengigkeit&quot; existiert in dieser Richtung nicht.
+- Die Abhaengigkeit laeuft umgekehrt, und dort ist sie ein Sicherheitsloch: Z.23 ist git ls-files --others --exclude-standard. --exclude-standard blendet alles aus, was .gitignore ignoriert. Was .gitignore ignoriert, ist damit weder in Z.20 (tracked) noch in Z.23 (untracked) sichtbar - aber Z.72-73 kopiert es trotzdem.
+- Messung am realen Repo, heute: dialog/ enthaelt 46 Dateien. 4 sind getrackt. 42 sind per .gitignore:2 ignoriert. git ls-files --others --exclude-standard meldet fuer dialog/ exakt 0 Treffer. Alle 46 landen im ZIP.
+Konsequenz: eine .env, ein .pem oder ein Token in einem ignorierten Pfad, den $FoldersToCopy erfasst, passiert den Scan lautlos und wird exportiert. Das Skript meldet dabei &quot;Secrets-Scan &amp; gitignore-Pruefung: OK&quot; (Z.47). Das ist kein Drift-Problem, das ist Ziel 4 (Fail-Closed) verfehlt - der Guardrail meldet Gruen fuer einen Bereich, den er nicht gesehen hat. Deine Manifest-Forderung bleibt richtig, aber die Begruendung muss diese sein, sonst wird der falsche Fix gebaut.
+
+Alternative zur Manifest-Ableitung von .gitignore, die ich gegenueberstelle: .gitignore unangetastet lassen und stattdessen den Scan auf das Export-Verzeichnis umstellen - nicht das Quell-Repo per git ls-files scannen, sondern $TempPath nach dem Kopieren per Get-ChildItem -Recurse gegen dieselben Muster. Dann ist die gepruefte Menge per Konstruktion identisch mit der ausgelieferten Menge, unabhaengig davon, was git sieht. Kosten: doppelter Scan-Durchlauf, vernachlaessigbar bei dieser Paketgroesse. Vorteil gegenueber deinem Weg: .gitignore bleibt eine reine Git-Datei und muss nicht generiert werden - eine generierte .gitignore ist selbst wieder eine Drift-Quelle, sobald jemand sie von Hand ergaenzt.
+
+Stand vor Runde 3, wie ich ihn sehe - widersprich, wo du anders zaehlst:
+- Ziel 1 SSOT: verfehlt (drei unabgeleitete Listen, Beleg 302e4b8).
+- Ziel 2 Spec-First: lokal erfuellt, nach Klon nicht (.gitignore:16).
+- Ziel 3 Portabilitaet: verfehlt (tote Pfade CLAUDE.md:15/26/29, README.md:93, Export unvollstaendig).
+- Ziel 4 Fail-Closed: verfehlt, neu - Scan-Blindzone Z.23 vs Z.72, 42 von 46 Dateien.
+- Ziel 5 Mutex: im Datei-Dialog und in dialog-lite erfuellt, im Mobilbetrieb gebrochen.
+Fuenf von fuenf mit Befund, keines davon konzeptionell - alle fuenf sind Implementierungsluecken, nicht Architekturfehler. Das ist die Antwort auf die gestellte Frage: das AOS ist in seiner Anlage funktionabel, in seinem aktuellen Dateizustand nicht.
+
+Fuer Runde 3 schlage ich vor, dass wir nur noch die Reihenfolge festlegen und schliessen. Mein Vorschlag: (1) Scan-Blindzone, weil Sicherheit und in einer Datei erledigt, (2) tote Pfade CLAUDE.md/README, weil ein Agent sie zuerst liest, (3) Manifest + -Verify bidirektional, (4) dialog-lite als Pin mit Offline-Skip, (5) Mobil-Checkpoint, weil der einen neuen Mechanismus braucht und nicht nur eine Korrektur.</div>
+<div class="obj"><div class="claim">Deine Kausalrichtung in Einwand 2 ist falsch: .gitignore beeinflusst den Export-Inhalt nicht, weil scripts/export-aos.ps1 den Inhalt aus den hartkodierten Literalen Z.72 und Z.81 nimmt und git ls-files (Z.20, Z.23) nur fuer den Secrets-Scan verwendet. Die reale Abhaengigkeit laeuft umgekehrt und ist ein Fail-Closed-Bruch: --exclude-standard in Z.23 blendet ignorierte Pfade aus dem Scan aus, waehrend Z.72 sie kopiert. Gemessen: 46 Dateien in dialog/, 4 getrackt, 42 ignoriert, 0 Treffer im Untracked-Scan, 46 im ZIP.</div><div class="retract">Ich ziehe das zurück, wenn: Ich ziehe das zurueck, wenn du eine Stelle in scripts/export-aos.ps1 zeigst, an der die Menge der exportierten Dateien aus git ls-files oder aus .gitignore abgeleitet wird statt aus $FoldersToCopy/$FilesToCopy - dann bestimmt .gitignore tatsaechlich den Export-Inhalt und deine Kausalrichtung ist die richtige.</div></div>
+<div class="obj"><div class="claim">.gitignore aus dem Manifest zu generieren ist der schlechtere der beiden Wege, weil eine generierte .gitignore selbst zur Drift-Quelle wird, sobald ein Mensch sie von Hand ergaenzt - genau das Muster, das den aktuellen Zustand erzeugt hat. Den Secrets-Scan stattdessen auf $TempPath nach dem Kopieren umzustellen macht geprueft und ausgeliefert per Konstruktion deckungsgleich.</div><div class="retract">Ich ziehe das zurück, wenn: Ich ziehe das zurueck, wenn ein Fall benannt wird, in dem der Scan auf $TempPath eine Secret-Kategorie verfehlt, die der git-basierte Scan am Quell-Repo faengt - etwa Dateien, die erst nach dem Kopierschritt entstehen, oder Secrets in der Git-Historie eines mitkopierten .git-Verzeichnisses.</div></div>
+</article>
+<article class="card post">
+<h3><span class="who">goose</span> <span class="stamp">Runde 2 · 2026-09-15 16:03</span></h3>
+<div class="body">Claude, drei Punkte.
+
+1. Einwand 1 (Offline): zurückgezogen. Du hast meine Rücknahmebedingung erfüllt — Pin-Schritt nicht-blockierend, Write-Warning bei Misserfolg, Exit-Code 0, AOS ohne dialog-lite funktionsfähig. Corporate Proxy als Regelfall statt Air-Gap als Extremfall — akzeptiert.
+
+2. Einwand 2 (.gitignore-Kausalität): zurückgezogen. Du hast recht, meine Kausalrichtung war falsch. Geprüft: export-aos.ps1:72/81 bestimmt den Export-Inhalt durch hartkodierte Literale, nicht durch git ls-files. git ls-files (Z.20/23) scannt nur nach Secrets. .gitignore bestimmt nicht, was exportiert wird.
+
+Aber dein Befund ist schwerer als meiner: die Scan-Blindzone ist ein Fail-Closed-Bruch (Ziel 4), kein SSOT-Problem. --exclude-standard in Z.23 blendet ignorierte Dateien aus dem Scan aus, Z.72 kopiert sie trotzdem. Eine .env in dialog/ — genau dort, wo $FoldersToCopy greift — passiert den Scan lautlos und wird exportiert, während das Skript &quot;Secrets-Scan &amp; gitignore-Prüfung: OK&quot; meldet. 42 von 46 Dateien in dialog/ sind in dieser Blindzone. Das ist der schwerste Befund dieses Dialogs.
+
+Deine Alternative ($TempPath nach dem Kopieren scannen statt Quell-Repo per git ls-files) ist besser als mein Vorschlag (.gitignore generieren):
+- Geprüfte Menge = ausgelieferte Menge, per Konstruktion
+- .gitignore bleibt reine Git-Datei, keine Generierung, keine Drift
+- Eine generierte .gitignore, die jemand von Hand ergänzt, ist genau das Muster, das den aktuellen Zustand erzeugt hat — dein Argument trägt.
+Ich nehme den $TempPath-Scan an.
+
+3. Einwand 3 (Mobil): offen, aber Claude hat ihn konzediert. Keine Konstruktion, in der ein abgerissener Agent noch committet. Festgehalten als Ziel-5-Bruch für die Prioritätenliste.
+
+Zu Claudes Zielerfassung: fünf von fünf mit Befund, alle Implementierungslücken, keine Architekturfehler. Das stimme ich zu — die Antwort auf die gestellte Frage ist: Anlage funktionsfähig, Dateizustand nicht.
+
+Zu Claudes Prioritätenliste: akzeptiert mit einer Anpassung.
+- (1) Scan-Blindzone → stimmt, Sicherheit zuerst, eine Datei
+- (2) Tote Pfade CLAUDE.md/README → stimmt, Agent liest sie zuerst
+- (3) Manifest + -Verify → stimmt, aber: $FoldersToCopy/$FilesToCopy in export-aos.ps1 aus dem Manifest ableiten, nicht nur README-Map
+- (4) dialog-lite als Pin mit Offline-Skip → stimmt
+- (5) Mobil-Checkpoint → stimmt, braucht neuen Mechanismus
+
+Ein Punkt für den Abschluss: die Prioritätenliste ist korrekt, aber (1) und (2) sind Quickfixes, (3) ist der strukturelle Fix, der (1) teilweise obsolet macht — wenn $FoldersToCopy aus dem Manifest kommt, ist die Allowlist nicht mehr hartkodiert. (5) ist der einzige Punkt, der über das AOS hinausgeht (VM-Seitig). Das sollte im Ergebnis stehen.
+
+Vorschlag: Dialog schließen mit konsolidierter Befundliste + Prioritäten. Keine offenen Einwände meinerseits.</div>
+</article>
+<article class="card post">
+<h3><span class="who">claude</span> <span class="stamp">Runde 3 · 2026-09-15 16:06</span></h3>
+<div class="body">Einverstanden mit dem Abschluss, mit einer Korrektur an deinem letzten Absatz - sie entscheidet, ob der Fix gebaut wird oder ausfaellt.
+
+Du schreibst, (3) mache (1) teilweise obsolet, weil $FoldersToCopy dann nicht mehr hartkodiert ist. Das trifft nicht zu. Die Blindzone haengt nicht daran, woher die Ordnerliste stammt, sondern daran, welche Menge gescannt wird. Ein aus dem Manifest abgeleitetes $FoldersToCopy kopiert dialog/ genauso vollstaendig wie das Literal heute - und Z.23 mit --exclude-standard sieht die 42 ignorierten Dateien darin weiterhin nicht. Manifest-Ableitung macht die Liste wartbar; sie macht den Scan nicht sehend. (1) und (3) sind orthogonal: (3) behebt SSOT, (1) behebt Fail-Closed. Wer (1) nach (3) streicht, hat die Blindzone unveraendert im Paket und haelt sie fuer erledigt - das waere das schlechtestmoegliche Ergebnis dieses Dialogs, weil dann ein grünes &quot;Secrets-Scan: OK&quot; auf einem Manifest steht, das Vertrauen erzeugt.
+
+Umgekehrt gilt es auch: (1) allein reicht, um das Sicherheitsloch zu schliessen, und ist in einer Datei erledigt. Deshalb bleibt die Reihenfolge wie vorgeschlagen, aber ohne Streichungsoption: (1) ist nicht Vorstufe von (3), sondern eigenstaendig.
+
+Deine Anpassung an (3) - $FoldersToCopy und $FilesToCopy aus dem Manifest ableiten, nicht nur die README-Map - nehme ich an. Damit sind alle drei Listen aus derselben Quelle abgeleitet, und die Drift-Ursache ist tatsaechlich adressiert und nicht nur ihr sichtbarster Auslaeufer.
+
+Zu (5): richtig, dass er ueber das AOS hinausgeht. Ich praezisiere fuers Protokoll, was dort offen bleibt, damit niemand es fuer geloest haelt: ein Checkpoint-Mechanismus auf der VM kann den Statusblock periodisch schreiben, aber nicht wissen, ob ein abgebrochener Schritt fachlich abgeschlossen war. Ein automatisch geschriebener Statusblock kann also selbst falsch sein. Die ehrlichere Minimalloesung ist ein Zeitstempel plus Abbruchmarkierung - &quot;Sitzung abgerissen um HH:MM, Stand ungeprueft&quot; -, damit der naechste Agent misstraut statt glaubt. Das ist kein geloestes Problem, sondern ein auf ein kleineres reduziertes. Ich markiere es als offen, nicht als spezifiziert.
+
+Keine weiteren Einwaende. Ich schliesse.</div>
+<div class="obj"><div class="claim">Deine Aussage, (3) mache (1) teilweise obsolet, ist falsch. Die Scan-Blindzone entsteht aus --exclude-standard in export-aos.ps1:23, nicht aus der Herkunft der Ordnerliste in Z.72. Ein manifest-abgeleitetes $FoldersToCopy kopiert dialog/ unveraendert vollstaendig; die 42 ignorierten Dateien bleiben ungescannt. (1) und (3) sind orthogonal und beide erforderlich.</div><div class="retract">Ich ziehe das zurück, wenn: Ich ziehe das zurueck, wenn gezeigt wird, dass die Manifest-Ableitung zugleich den Scan-Umfang bestimmt - also die geprueften Pfade aus derselben Manifest-Liste kommen wie die kopierten. Dann faellt die Blindzone mit (3) tatsaechlich weg und (1) ist darin aufgegangen.</div></div>
+</article>
+<div class="result"><h2 style="margin-top:0">Ergebnis</h2><div class="body">Ergebnis: Das AOS ist in seiner Anlage funktionabel, in seinem aktuellen Dateizustand nicht. Alle fuenf Zielsetzungen haben einen Befund, aber keiner davon ist konzeptionell - es sind ausnahmslos Implementierungsluecken. Die gemeinsame Ursache: drei voneinander unabgeleitete Listen beschreiben, was zum AOS gehoert (README.md:47-93, .gitignore, scripts/export-aos.ps1:72+81).
+
+Befunde, alle am 2026-09-15 auf Platte verifiziert:
+- Ziel 4 Fail-Closed, schwerster Befund: export-aos.ps1:23 nutzt git ls-files --others --exclude-standard und blendet damit alle per .gitignore ignorierten Pfade aus dem Secrets-Scan aus, waehrend Z.72 sie kopiert. Gemessen an dialog/: 46 Dateien, 4 getrackt, 42 ignoriert, 0 Treffer im Scan, 46 im ZIP. Das Skript meldet dabei &quot;Secrets-Scan &amp; gitignore-Pruefung: OK&quot; (Z.47). Ein Key in einem ignorierten Pfad wird lautlos exportiert.
+- Ziel 1 SSOT: verfehlt, drei unabgeleitete Listen. Beleg fuer die Wiederholbarkeit: Commit 302e4b8 loeschte ops/ und hinterliess CLAUDE.md:15 und :29 tot.
+- Ziel 3 Portabilitaet: verfehlt. Tote Pfade CLAUDE.md:15/26/29, README.md:93 listet ein nicht existierendes live/. Nicht in der Map: docs/, dialoge/, dialog-lite-src/, projects/Projekte-Goose/, templates/DEVELOPMENT.md. Drei Agenten im Betrieb, README beschreibt zwei. Export unvollstaendig (dialog-lite fehlt).
+- Ziel 2 Spec-First: lokal erfuellt, nach Klon nicht - .gitignore:16 ignoriert projects/ komplett, also kein PROJECT.md/task.md auf einer neuen VM.
+- Ziel 5 Mutex: im Datei-Dialog und in dialog-lite serverseitig erfuellt, im Mobilbetrieb gebrochen. MOBILE.md:26 nennt 3-10 min Abbruch, MOBILE.md:31-38 verlangt den Commit danach; der Abbruch ist genau die Bedingung, unter der der Schritt ausfaellt.
+- Hygiene: hello.txt untracked im Root, dialog-lite-src/ als verschachteltes ungetracktes Fremdrepo (103 MB, davon 73 MB nicht-portabler .venv).
+
+Massnahmen in dieser Reihenfolge, einvernehmlich:
+1. Scan-Blindzone schliessen - Secrets-Scan auf $TempPath nach dem Kopieren umstellen statt auf das Quell-Repo per git ls-files. Geprueft und ausgeliefert werden dadurch per Konstruktion deckungsgleich. Eine Datei, Sicherheit zuerst.
+2. Tote Pfade in CLAUDE.md und README.md reparieren - ein Agent liest sie zuerst.
+3. manifest.json als einzige Quelle; README-Map, Export-Allowlist ($FoldersToCopy/$FilesToCopy) und install.ps1 -Verify daraus ableiten, Verify bidirektional mit Exit-Code != 0 bei Abweichung.
+4. dialog-lite als Pin (Repo-URL + Commit-SHA) statt als Ordner im Export; Klon-Schritt in install.ps1 nicht-blockierend mit Offline-Erkennung, Exit-Code 0 bei Misserfolg. Corporate Proxy ist der Regelfall, nicht Air-Gap.
+5. Mobil-Checkpoint - offen, nicht spezifiziert.
+
+Zurueckgezogen im Verlauf: Goose&#x27; Vorschlag, dialog-lite-src/ in die Export-Allowlist aufzunehmen (103 MB, toter .venv, verschachteltes .git); Goose&#x27; Kausalthese, .gitignore bestimme ueber git ls-files den Export-Inhalt (es bestimmt ihn nicht - Z.72/81 sind Literale); Goose&#x27; Vorschlag, .gitignore aus dem Manifest zu generieren (eine generierte, von Hand ergaenzte .gitignore ist selbst eine Drift-Quelle).
+
+Strittig geblieben und hier gegen Goose&#x27; letzten Absatz festgehalten: (3) macht (1) nicht obsolet. Die Blindzone haengt an --exclude-standard in Z.23, nicht an der Herkunft der Ordnerliste in Z.72. Ein manifest-abgeleitetes $FoldersToCopy kopiert dialog/ unveraendert vollstaendig und laesst die 42 Dateien ungescannt. (1) und (3) sind orthogonal und beide erforderlich - (1) darf nach (3) nicht gestrichen werden.
+
+Offen und ausdruecklich nicht geloest: Punkt 5. Ein automatischer Checkpoint kann den Statusblock schreiben, aber nicht wissen, ob der abgebrochene Schritt fachlich abgeschlossen war - er kann also selbst falsch sein. Die ehrlichere Minimalvariante ist Zeitstempel plus Abbruchmarkierung (&quot;Sitzung abgerissen um HH:MM, Stand ungeprueft&quot;), damit der naechste Agent misstraut statt glaubt. Damit ist das Problem verkleinert, nicht behoben.</div><p class="meta">claude · 2026-09-15 16:06</p></div>
+</main>
+<footer>
+  Dialog abgeschlossen — die Seite lädt sich nicht mehr neu. Der vollständige Zustand liegt als JSON im Kopf dieser Datei —
+  sie ist zugleich Speicher, Mitleseansicht und Abschlussdokument.
+</footer>
+</body>
+</html>
