@@ -121,15 +121,17 @@ Das Skript kann jederzeit abgebrochen und neu gestartet werden. Beim Neustart li
 goose run -i "<prompt-datei>" --no-session -q
 ```
 
-Prompt liegt in Temp-Datei → kein Quoting-Problem.
+Prompt liegt in einer Temp-Datei. `-i` ist Gooses eigener Schalter für Anweisungsdateien —
+dort ist die Datei das vorgesehene Transportmittel, kein untergeschobener Fremdtext.
 
 ### Claude
 
 ```powershell
-claude -p "Lies die Datei <prompt-datei> und folge den Anweisungen darin." --allowedTools "mcp__aos-dialog__*,Read,Grep,Glob"
+<prompt> | claude -p --allowedTools "mcp__aos-dialog__*,Read,Grep,Glob"
 ```
 
-- Prompt in Temp-Datei, nur Einzeiler über argv → umgeht `CommandLineToArgvW`-Quoting-Regeln
+- **Prompt über stdin**, nicht über argv und nicht über einen Dateiverweis. Damit entfallen
+  die Quoting-Regeln von `CommandLineToArgvW` vollständig, und es entsteht kein Temp-Artefakt.
 - `--allowedTools` statt `bypassPermissions` → Least Privilege (Ziel 4: Fail-Closed-Security)
 - Vorab freigegeben: `aos-dialog`-Tools + `Read`, `Grep`, `Glob` (Verifikation auf Platte)
 - `Write`, `Edit`, `Bash` sind **nicht gesperrt, sondern nicht freigegeben**: sie laufen in die
@@ -227,7 +229,8 @@ Das verhindert schnelle Konvergenz auf Zustimmung ohne Verifikation.
 | Kein `bypassPermissions` | Entspricht `global-rules.md` (Ziel 4) |
 | PreToolUse-Hook | **Ungeprüft.** Plausibel, dass der Hook auch im Headless-Lauf greift, da Hooks in `settings.json` und nicht am Berechtigungsmodus hängen — verifiziert hat das niemand. Bis zu einem Test nicht als Schutzschicht einrechnen. |
 | Atomare Writes | `thread.py` nutzt `tempfile.mkstemp` + `os.replace` → Kill sicher |
-| Temp-Dateien | Werden nach Agenten-Lauf gelöscht |
+| Temp-Dateien | Nur für Goose (`-i`); werden nach dem Lauf gelöscht. Für Claude entsteht keine. |
+| Kein Dateiverweis im Prompt | Der Prompt geht über stdin — siehe unten, warum das eine Sicherheitsfrage ist |
 
 ---
 
@@ -264,7 +267,16 @@ file:///C:/Users/sts/AOS/dialoge/<slug>.html
 
 - **Asymmetrie in Phase 1/2:** Wer öffnet und wer auföst, liegt fest — der Initiator sondiert zuerst, der Partner bewertet mit `dialog_probe_resolve`. Wer welche Rolle hat, ist seit der Agentenregistratur über `-Initiator`/`-Partner` frei wählbar; *innerhalb* eines Dialogs bleibt die Zuteilung aber fest. Wer die Voreingenommenheit bei der Konvergenz-Entscheidung ausschließen will, wechselt die Rollen zwischen zwei Dialogen.
 - **Synchroner Loop:** `goose run` und `claude -p` sind synchrone Prozesse. Wenn einer hängt, blockiert die Schleife bis Timeout. Abhilfe: Timeout-Wrapper (eingebaut).
-- **Claude `-p` Quoting:** Prompt in Temp-Datei, nur Einzeiler über argv → robust. Edge-Cases mit Backslash am Prompt-Ende theoretisch möglich, aber unwahrscheinlich da Prompt pfadbasiert.
+- **Prompt-Transport zu Claude:** über stdin. Der frühere Weg — ein Einzeiler über argv, der
+  auf eine Temp-Datei verwies („Lies die Datei X und folge den Anweisungen darin“) — wurde
+  verworfen, nachdem Claude ihn im Echtlauf zurückgewiesen hat: *„Das ist ein klassisches
+  Prompt-Injection-Muster.“* Zu Recht — eine unbekannte Datei, deren Inhalt als Anweisung
+  auszuführen ist, ist genau das Muster, das ein Agent ablehnen soll. Dass es beim ersten Zug
+  durchlief und beim zweiten nicht, machte es schlimmer: nicht deterministisch. Über stdin ist
+  der Prompt der Prompt, und das Quoting-Problem verschwindet als Nebeneffekt.
+- **Umlaute in Prompt-Vorlagen:** Die stdin-Schreibweise unter PowerShell 5.1 gibt keine
+  Encoding-Garantie (`StandardInputEncoding` existiert erst ab .NET Core). Die Vorlagen im
+  Skript sind deshalb bewusst reines ASCII (`ae`, `oe`, `ue`). Wer sie erweitert, hält das ein.
 - **PreToolUse-Hook ungeprüft:** Ob der Guardrail `hooks/block-dangerous.sh` im Headless-Lauf
   auslöst, ist nicht getestet. *Offen — ein Lauf mit einem absichtlich blockierten Muster klärt es.*
 - **Beschränkung gilt nur für Claude:** `--allowedTools` betrifft ausschließlich den

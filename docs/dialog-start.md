@@ -29,7 +29,7 @@ MCP auf. Erst für die Züge des *anderen* übergibt er an den Loop, und zwar im
 |---|---|---|
 | Claude Code Desktop-App | `commands/dialog-start.md` | `/dialog-start <slug> \| <thema> \| <partner>` |
 | Antigravity | `~/.gemini/config/plugins/agos-core/skills/dialog-start/SKILL.md` | Skill im Chat aufrufen |
-| Goose Desktop | `recipes/dialog-start.yaml` | Deeplink aus `recipes/dialog-start.deeplink.txt` öffnen |
+| Goose Desktop | `recipes/dialog-start.yaml` | Recipe „AOS Dialog starten“ aus der Recipe-Liste wählen |
 
 ### Claude Code
 
@@ -47,24 +47,39 @@ trägt im Dialog die Kennung `antigravity`; der Partner ist `claude` oder `goose
 
 ### Goose Desktop
 
-Den Link aus `recipes/dialog-start.deeplink.txt` öffnen. Goose Desktop fragt `slug`, `topic`
-und `partner` beim Öffnen ab — ein Link genügt für alle Themen.
-
-Neu erzeugen, falls das Recipe geändert wird:
+Einmalig installieren:
 
 ```powershell
-goose recipe deeplink <AOS_ROOT>\recipes\dialog-start.yaml
+powershell <AOS_ROOT>\scripts\install-goose-recipe.ps1
 ```
 
-Parameter lassen sich mit `-p key=value` fest einbacken. Dann gilt der Link nur für genau ein
-Thema — für einen wiederkehrenden Dialog sinnvoll, für den allgemeinen Einstieg nicht.
+Das Skript validiert das Recipe und kopiert es nach
+`%APPDATA%\Block\goose\config\recipes\aos-dialog-starten.yaml`. Danach Goose Desktop neu
+starten; das Recipe steht dort als **„AOS Dialog starten“** in der Liste. Goose fragt `topic`,
+optional `slug` und `partner` beim Start ab. Nach jeder Änderung am Recipe erneut ausführen.
+
+> **Warum kein Deeplink?**
+> `goose recipe deeplink` erzeugt zwar einen `goose://`-Link, bettet die Konfiguration darin
+> aber vollständig base64-kodiert ein — für dieses Recipe rund 3.900 Zeichen. Eine
+> Windows-`.url`-Verknüpfung reicht ihn nicht unverkürzt durch; Goose quittiert das im Log mit
+> `Failed to decode recipe deeplink`. Der Protokoll-Handler selbst ist korrekt registriert
+> (`HKCU\Software\Classes\goose` → `Goose.exe "%1"`), das Problem ist allein die Länge.
+> Der Weg über den Recipe-Ordner umgeht das.
 
 ---
 
 ## Der Ablauf, den alle drei durchlaufen
 
-1. **Angaben klären.** Slug nur klein, Ziffern, Bindestriche. Thema als vollständige Frage,
-   nicht als Überschrift. Bei Lücken eine Rückfrage im Chat, nicht raten.
+1. **Angaben klären.** Thema als vollständige Frage, nicht als Überschrift. Bei Lücken eine
+   Rückfrage im Chat, nicht raten.
+
+   **Der Slug wird einmal festgelegt und danach unverändert überall verwendet** — in
+   `dialog_open`, in `dialog_probe` und in der Kommandozeile des Loops. Erlaubt sind nur
+   Kleinbuchstaben, Ziffern und Bindestriche; Umlaute werden umschrieben, Leerzeichen zu
+   Bindestrichen. Weicht der Wert zwischen Server und Skript ab, sucht das Skript eine Datei,
+   die es nicht gibt, sieht `state: absent` und eröffnet einen **zweiten** Dialog. Genau das
+   ist beim ersten Goose-Lauf beinahe passiert: eingegeben wurde „AOS-Ziele prüfen“, der
+   Server bekam `aos-ziele-pruefen`, die Kommandozeile trug den Rohtext.
 2. **Selbst nachsehen.** Die Dateien öffnen, um die es geht, und die relevanten Zeilen lesen.
    Eine Sonde ohne Dateikontakt zieht nur das Vorwissen des Modells.
 3. **`dialog_open`** mit Slug, Thema, Partner, `max_rounds`.

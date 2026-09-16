@@ -3,14 +3,15 @@ title: AOS Dialog starten
 description: Eroeffnet einen Agent-Dialog ueber den MCP-Server aos-dialog, reicht die eigene Sonde ein und uebergibt den Rest an dialog-loop.ps1.
 
 parameters:
-  - key: slug
-    input_type: string
-    requirement: required
-    description: Kennung des Dialogs - nur Kleinbuchstaben, Ziffern, Bindestriche. Wird Dateiname unter dialoge\.
   - key: topic
     input_type: string
     requirement: required
     description: Die vollstaendige Fragestellung. Eine Frage, keine Ueberschrift - je enger und pruefbarer, desto brauchbarer der Dialog.
+  - key: slug
+    input_type: string
+    requirement: optional
+    default: ""
+    description: Optionale Kennung des Dialogs. Leer lassen - dann wird sie aus dem Thema abgeleitet. Erlaubt sind nur Kleinbuchstaben, Ziffern und Bindestriche.
   - key: partner
     input_type: string
     requirement: optional
@@ -27,27 +28,44 @@ instructions: |
   Entscheidung, eine Zahl. Richtwert hoechstens zehn Zeilen. Du reichst blind ein - die
   Sonde des anderen siehst du erst, wenn beide vorliegen.
 
+  WICHTIG - der Slug: Der Server und das Skript adressieren den Dialog ueber denselben
+  String. Leg ihn EINMAL fest und verwende danach ausnahmslos diesen einen Wert - im
+  dialog_open, im dialog_probe und in der Kommandozeile. Weichen sie voneinander ab,
+  sucht das Skript eine Datei, die es nicht gibt, und eroeffnet einen zweiten Dialog.
+
 prompt: |
-  Eroeffne einen Agent-Dialog zum Thema "{{ topic }}" unter dem Slug "{{ slug }}",
-  Partner ist "{{ partner }}".
+  Eroeffne einen Agent-Dialog zum Thema "{{ topic }}". Partner ist "{{ partner }}".
 
-  1. Sieh dir die Dateien an, um die es im Thema geht - oeffne sie und lies die
-     relevanten Zeilen. Ohne Dateikontakt zieht deine Sonde nur dein Vorwissen.
+  1. SLUG FESTLEGEN. Ist "{{ slug }}" nicht leer, pruefe ihn; sonst leite ihn aus dem Thema ab.
+     Regel: Kleinbuchstaben, Ziffern, Bindestriche - sonst nichts. Umlaute umschreiben
+     (ae oe ue ss), Leerzeichen zu Bindestrichen, alles andere entfernen, hoechstens
+     etwa 40 Zeichen. Beispiel: "Sind die Ziele des AOS angemessen?" -> "aos-ziele-angemessen".
+     Nenne den festgelegten Slug im Chat und verwende ab hier NUR noch diesen Wert.
 
-  2. dialog_open(slug="{{ slug }}", topic="{{ topic }}", partner="{{ partner }}", max_rounds=3)
+  2. AOS-WURZEL BESTIMMEN. Suche `dialog-loop.ps1` auf der Platte; das Elternverzeichnis
+     von `scripts\` ist die AOS-Wurzel. Merke dir den vollstaendigen Pfad zum Skript.
+
+  3. DATEIEN ANSEHEN. Oeffne die Dateien, um die es im Thema geht, und lies die relevanten
+     Zeilen. Ohne Dateikontakt zieht deine Sonde nur dein Vorwissen.
+
+  4. dialog_open(slug=<festgelegter-slug>, topic="{{ topic }}", partner="{{ partner }}", max_rounds=3)
      Existiert der Slug bereits: nicht ueberschreiben. Mit dialog_read den Stand lesen,
      im Chat melden und fragen, ob fortgesetzt oder ein neuer Slug gewaehlt wird.
 
-  3. dialog_probe(slug="{{ slug }}", artifact=...) - dein Artefakt, Datei und Zeile.
+  5. dialog_probe(slug=<festgelegter-slug>, artifact=...) - dein Artefakt, Datei und Zeile.
 
-  4. Starte im Hintergrund, damit der Chat bedienbar bleibt:
-     powershell -ExecutionPolicy Bypass -File "<AOS_ROOT>\scripts\dialog-loop.ps1" -Slug "{{ slug }}" -Topic "resume" -Initiator "{{ partner }}" -Partner "goose" -Rounds 3
+  6. LOOP STARTEN. Dieser Schritt ist NICHT optional und darf nicht uebersprungen werden.
+     Ohne ihn bleibt der Dialog in der Sondenphase stehen und der Partner erfaehrt nie,
+     dass er am Zug ist. Setze den Befehl als Shell-Aufruf ab, im Hintergrund:
+
+     powershell -ExecutionPolicy Bypass -File "<pfad-aus-schritt-2>" -Slug "<festgelegter-slug>" -Topic "resume" -Initiator "{{ partner }}" -Partner "goose" -Rounds 3
+
      -Topic "resume" ist ein Platzhalter; das Thema steht bereits im Dialog, der Parameter
      ist aber Pflicht. -Initiator ist der Partner, nicht du: du hast bereits sondiert.
-     <AOS_ROOT> aus dem Skriptpfad ableiten, nicht hart kodieren.
+     Bestaetige im Chat, dass du den Befehl abgesetzt hast, und nenne ihn woertlich.
 
-  5. Melde im Chat: den Pfad zum Mitlesen (dialoge\{{ slug }}.html, Auto-Refresh alle
-     5 Sekunden), dass der Loop im Hintergrund laeuft - und dass deine spaeteren Zuege
+  7. MELDEN. Pfad zum Mitlesen (<aos-wurzel>\dialoge\<festgelegter-slug>.html, Auto-Refresh
+     alle 5 Sekunden), dass der Loop im Hintergrund laeuft - und dass deine spaeteren Zuege
      von einer headless gestarteten Zweitinstanz uebernommen werden, nicht von dieser
      Sitzung. Ist der Partner "antigravity", sage zusaetzlich: der Loop haelt an, sobald
      Antigravity am Zug ist, weil Antigravity keinen Headless-Start hat.

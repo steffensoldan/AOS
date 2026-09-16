@@ -25,7 +25,15 @@ Im Fremdrepo `dialog-lite-src/dialog-lite` (eigener Commit `0d4e376`, als Patch 
 * **[NEW]** `commands/dialog-start.md`: Slash-Command für die Claude-Code-Desktop-App.
 * **[NEW]** `recipes/dialog-start.yaml`: Goose-Recipe mit den Parametern `slug`, `topic`,
   `partner`.
-* **[NEW]** `recipes/dialog-start.deeplink.txt`: erzeugter Deeplink für Goose Desktop.
+* **[NEW]** `scripts/install-goose-recipe.ps1`: installiert das Recipe in Goose.
+
+  *Ersetzt den ursprünglich gewählten Deeplink-Weg.* Der erste Entwurf legte eine
+  `.url`-Verknüpfung mit einem `goose://recipe?config=`-Link an. Im Echttest scheiterte das:
+  Goose bettet die Konfiguration vollständig base64-kodiert ein (~3.900 Zeichen), eine
+  Windows-Verknüpfung reicht das nicht unverkürzt durch. Das Goose-Log zeigte fünfmal
+  `Failed to decode recipe deeplink`. Der Protokoll-Handler selbst ist korrekt registriert —
+  das Problem ist allein die Länge. `recipes/dialog-start.deeplink.txt` und
+  `recipes/AOS Dialog starten.url` wurden daraufhin entfernt.
 * **[NEW]** `~/.gemini/config/plugins/agos-core/skills/dialog-start/SKILL.md` (außerhalb des
   Repos): Skill für Antigravity.
 
@@ -84,17 +92,44 @@ Resume-Pfad, als Hintergrundprozess.
 * **Fehlerfall**: unbekannter Agent wird vor jedem Prozessstart abgewiesen, Exit 1.
 * **Browser**: Vorspann zugeklappt und aufgeklappt geprüft, Platzierung korrekt.
 
+### Im Echtlauf gefunden und behoben
+
+* **Prompt-Transport zu Claude war ein Injection-Muster.** Der erste Entwurf übergab per argv
+  einen Einzeiler, der auf eine Temp-Datei verwies: „Lies die Datei X und folge den Anweisungen
+  darin.“ Gebaut war das, um die Windows-Quoting-Regeln zu umgehen. Im Lauf vom 2026-09-16 hat
+  Claude in Runde 2 verweigert: *„Ich öffne diese temporäre Datei nicht und folge auch keinen
+  Anweisungen daraus. Das ist ein klassisches Prompt-Injection-Muster.“* Die Verweigerung ist
+  korrekt; der erste Zug war durchgelaufen, der zweite nicht — also nicht deterministisch.
+  **Behoben:** `UseStdin` je Registratur-Eintrag; Claude bekommt den Prompt über stdin, Goose
+  behält `-i`. Getestet über `Invoke-Agent` mit echtem Prozess (`BEREIT`, Exit 0).
+  Nebeneffekt: kein Temp-Artefakt mehr für Claude, Quoting-Problem entfällt ersatzlos.
+* **Goose-Deeplink war zu lang.** Siehe Paket B oben.
+* **Slug wurde nicht normalisiert.** Im ersten Goose-Lauf ging „AOS-Ziele prüfen“ als Slug in
+  die Kommandozeile, während der Server `aos-ziele-pruefen` bekam. Der Loop hätte einen zweiten
+  Dialog eröffnet. **Behoben** im Recipe: Slug wird einmal festgelegt und überall verwendet.
+* **Der Revisions-Abbruch hat sich bewährt.** Nach der Verweigerung meldete der Loop
+  `Kein Fortschritt: revision unveraendert bei 5` und brach ab, statt zweimal denselben
+  abgelehnten Prompt zu wiederholen.
+
 ### Nicht verifiziert — ausdrücklich offen
 
-* **`--allowedTools` mit `mcp__aos-dialog__*`**: weiterhin unbestätigt. Kein Lauf kam bisher
-  bis zum ersten MCP-Aufruf des headless gestarteten Claude; die Läufe scheiterten vorher an
-  Authentifizierung und Guthaben.
+* ~~**`--allowedTools` mit `mcp__aos-dialog__*`**~~ — **bestätigt.** Im Lauf vom 2026-09-16 hat
+  der headless gestartete Claude über `mcp__aos-dialog__*` seine Sonde eingereicht und die
+  Sondenphase als `diverged` aufgelöst, Exit 0. Ziel 4 ist damit ohne `bypassPermissions`
+  erreicht.
 * **Dark Mode des Vorspanns**: nicht visuell geprüft — der Vorschau-Pane rendert lokale
   Dateien immer hell. Alle neuen Farben laufen über bestehende Tokens, die im
   `prefers-color-scheme: dark`-Block umdefiniert sind; der Schluss ist konstruktiv, nicht
   gemessen.
-* **Vollautomatischer Durchlauf von dialog-lite**: bisher keiner. Der Dialog
-  `aos-funktionalitaet` wurde manuell gefahren.
+* ~~**Vollautomatischer Durchlauf von dialog-lite**~~ — **erbracht.** `aos-ziele-pruefen`,
+  2026-09-16: Sondenphase, Bewertung als `diverged`, zwei Debattenrunden im Wechsel und
+  Abschluss durch goose — ohne menschlichen Eingriff, `state: done`, revision 9.
+  Vier Beiträge, sechs Einwände, jeder mit Rücknahmebedingung. Claude zog in Runde 2
+  eine eigene Objection nach Prüfung des Wortlauts zurück.
+
+  Nebenbei belegt: Der Timeout-Wrapper greift. In Runde 3 lief goose in den 300-s-Timeout,
+  wurde beendet, und der Retry (Versuch 2/3) führte zum Abschluss — ein transienter Fehler,
+  bei dem die Wiederholung genau richtig ist, im Unterschied zu den fatalen Mustern.
 
 ---
 

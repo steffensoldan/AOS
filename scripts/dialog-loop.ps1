@@ -62,23 +62,29 @@ function Resolve-GoosePath {
 function Get-AgentRegistry {
     @{
         claude = @{
-            Mode = 'headless'
-            Exe  = (Resolve-ClaudePath)
-            # Nur ein Einzeiler ueber argv, der Prompt bleibt in der Datei - umgeht die
-            # Quoting-Regeln von CommandLineToArgvW. --allowedTools statt bypassPermissions:
-            # der Loop braucht die Dialog-Tools und Lesezugriff, sonst nichts
-            # (global-rules.md, Ziel 4 Fail-Closed).
-            Args = { param($f) "-p `"Lies die Datei $f und folge den Anweisungen darin.`" " +
-                               "--allowedTools `"mcp__aos-dialog__*,Read,Grep,Glob`"" }
+            Mode     = 'headless'
+            Exe      = (Resolve-ClaudePath)
+            # Der Prompt kommt ueber stdin. Ein Dateiverweis ("lies X und folge den
+            # Anweisungen darin") ist das klassische Prompt-Injection-Muster und wurde
+            # im Echtlauf zurueckgewiesen - zu Recht. Ueber stdin ist der Prompt der
+            # Prompt, und die Quoting-Regeln von CommandLineToArgvW entfallen ebenfalls.
+            # --allowedTools statt bypassPermissions: der Loop braucht die Dialog-Tools
+            # und Lesezugriff, sonst nichts (global-rules.md, Ziel 4 Fail-Closed).
+            UseStdin = $true
+            Args     = { param($f) "-p --allowedTools `"mcp__aos-dialog__*,Read,Grep,Glob`"" }
         }
         goose = @{
-            Mode = 'headless'
-            Exe  = (Resolve-GoosePath)
-            Args = { param($f) "run -i `"$f`" --no-session -q" }
+            Mode     = 'headless'
+            Exe      = (Resolve-GoosePath)
+            # Goose hat mit -i einen eigenen Schalter fuer Anweisungsdateien; dort ist
+            # die Datei das vorgesehene Transportmittel, kein Fremdtext.
+            UseStdin = $false
+            Args     = { param($f) "run -i `"$f`" --no-session -q" }
         }
         antigravity = @{
-            Mode = 'manual'
-            Exe  = $null
+            Mode     = 'manual'
+            Exe      = $null
+            UseStdin = $false
             Hint = "Antigravity hat keinen eigenstaendigen Headless-Start. 'agentapi new-conversation' " +
                    "ist ein Client zu einer laufenden IDE und verlangt ANTIGRAVITY_LS_ADDRESS. " +
                    "Antworte im Antigravity-Chat und starte diesen Lauf danach erneut - der Resume-Pfad greift."
@@ -113,6 +119,7 @@ function Invoke-Agent {
         return 'fatal'
     }
     return Invoke-AgentHeadless -Exe $agent.Exe -ArgBuilder $agent.Args -Prompt $Prompt -AgentName $Name `
+        -UseStdin:([bool]$agent.UseStdin) `
         -TimeoutSec $TimeoutSec -MaxRetries $MaxRetries -WorkingDir $WorkingDir
 }
 
@@ -165,15 +172,20 @@ function Invoke-AgentHeadless {
         [string]$Exe,
         [scriptblock]$ArgBuilder,   # baut die Kommandozeile aus dem Prompt-Dateipfad
         [string]$Prompt,
+        [switch]$UseStdin,          # Prompt ueber stdin statt ueber eine Datei
         [string]$AgentName,
         [int]$TimeoutSec,
         [int]$MaxRetries,
         [string]$WorkingDir
     )
 
-    # Prompt in Temp-Datei - vermeidet Quoting-Probleme
-    $promptFile = [System.IO.Path]::GetTempFileName()
-    [System.IO.File]::WriteAllText($promptFile, $Prompt, [System.Text.UTF8Encoding]::new($false))
+    # Datei nur fuer Agenten, die eine Anweisungsdatei erwarten (Goose: -i).
+    # Wer stdin nutzt, braucht keine - und hinterlaesst nichts im Temp-Verzeichnis.
+    $promptFile = $null
+    if (-not $UseStdin) {
+        $promptFile = [System.IO.Path]::GetTempFileName()
+        [System.IO.File]::WriteAllText($promptFile, $Prompt, [System.Text.UTF8Encoding]::new($false))
+    }
 
     $status = 'failed'
     $maxAttempts = $MaxRetries + 1   # MaxRetries zaehlt Wiederholungen, nicht Laeufe
@@ -191,6 +203,7 @@ function Invoke-AgentHeadless {
         $psi.UseShellExecute = $false
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError = $true
+        $psi.RedirectStandardInput = [bool]$UseStdin
         $psi.WorkingDirectory = $WorkingDir
         $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
         $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
@@ -198,6 +211,12 @@ function Invoke-AgentHeadless {
         $proc = [System.Diagnostics.Process]::Start($psi)
         $stdoutTask = $proc.StandardOutput.ReadToEndAsync()
         $stderrTask = $proc.StandardError.ReadToEndAsync()
+
+        if ($UseStdin) {
+            # Erst schreiben, dann schliessen - sonst wartet der Prozess auf Eingabe.
+            $proc.StandardInput.Write($Prompt)
+            $proc.StandardInput.Close()
+        }
 
         $timedOut = -not $proc.WaitForExit($TimeoutSec * 1000)
 
@@ -247,7 +266,7 @@ function Invoke-AgentHeadless {
         if ($status -eq 'ok' -or $status -eq 'fatal') { break }
     }
 
-    Remove-Item $promptFile -ErrorAction SilentlyContinue
+    if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
     return $status
 }
 

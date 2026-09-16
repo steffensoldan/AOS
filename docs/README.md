@@ -38,6 +38,6 @@ darauf, statt den Text zu kopieren.
 | `../scripts/dialog-loop.ps1` | Orchestrator |
 | `../commands/dialog-start.md` | Slash-Command für Claude Code |
 | `../recipes/dialog-start.yaml` | Goose-Recipe |
-| `../recipes/dialog-start.deeplink.txt` | Deeplink für Goose Desktop |
+| `../scripts/install-goose-recipe.ps1` | Installiert das Recipe in Goose Desktop |
 | `../dialoge/` | Die Dialoge selbst, eine HTML-Datei je Thema |
 | `../dialog-lite-src/` | Geklontes Fremdrepo mit dem MCP-Server (eigenes `.git`) |
