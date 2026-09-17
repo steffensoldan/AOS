@@ -43,7 +43,7 @@ Claude ihn aus dem Thema ab und nennt ihn im Chat.
 **Einmalig registrieren**, sonst kennt Claude Code den Befehl nicht:
 
 ```powershell
-powershell <AOS_ROOT>\scriptsdd-skill.ps1 -CommandName dialog-start
+powershell <AOS_ROOT>\scripts\add-skill.ps1 -CommandName dialog-start
 ```
 
 Das verlinkt `commands/dialog-start.md` nach `~/.claude/commands/`. Achtung: `add-skill.ps1`
